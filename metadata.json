@@ -1,0 +1,6 @@
+{
+  "name": "AITI — AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE",
+  "description": "AITI (AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE) — BEYOND TECH. Full-stack institutional school management system and digital campus portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
