@@ -12,6 +12,9 @@ import { ApplicationForm } from './components/public/ApplicationForm';
 import { VerificationPage } from './components/public/VerificationPage';
 import { NewsAndGallery } from './components/public/NewsAndGallery';
 import { ContactPage } from './components/public/ContactPage';
+import { InternationalLandingPage } from './components/public/InternationalLandingPage';
+import { OnlineCoursesPublicPage } from './components/public/OnlineCoursesPublicPage';
+import { OnlineClassroomPortal } from './components/portal/OnlineClassroomPortal';
 
 import { AdminCommandCenter } from './components/portal/AdminCommandCenter';
 import { AdmissionsPortal } from './components/portal/AdmissionsPortal';
@@ -96,6 +99,14 @@ export const App: React.FC = () => {
           <ShortCoursesPage onNavigate={handleNavigate} />
         )}
 
+        {(currentView === 'online_courses' || currentView === 'online') && (
+          <OnlineCoursesPublicPage onNavigate={handleNavigate} />
+        )}
+
+        {currentView === 'international' && (
+          <InternationalLandingPage onNavigate={handleNavigate} />
+        )}
+
         {currentView === 'corporate' && (
           <CorporateTrainingPage onNavigate={handleNavigate} />
         )}
@@ -136,6 +147,10 @@ export const App: React.FC = () => {
         {/* INSTITUTIONAL PORTALS (RBAC & Role-Aware) */}
         {currentView === 'portal_admin' && (
           <AdminCommandCenter />
+        )}
+
+        {currentView === 'portal_online_lms' && (
+          <OnlineClassroomPortal onBackToMain={() => handleNavigate('home')} />
         )}
 
         {currentView === 'portal_admissions' && (

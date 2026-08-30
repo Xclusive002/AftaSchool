@@ -151,6 +151,181 @@ export type ShortCourseStatus = 'draft' | 'published' | 'archived' | 'full' | st
 export type ShortCourseTrainingMode = 'Physical Lab' | 'Online Live' | 'Hybrid' | 'Weekend Intensive' | string;
 export type ShortCourseCertificateType = 'Certificate of Attendance' | 'Certificate of Practical Competency' | 'Certificate of Completion' | string;
 
+export interface CurrencySettings {
+  defaultCurrency: 'NGN';
+  internationalOnlineCurrency: 'USD';
+  supportedCurrencies: string[];
+  exchangeNotice: string;
+}
+
+export interface LessonResource {
+  id: string;
+  title: string;
+  type: 'pdf' | 'slide' | 'code' | 'document' | 'link';
+  fileUrl: string;
+  fileSize?: string;
+}
+
+export interface OnlineLesson {
+  id: string;
+  moduleId: string;
+  title: string;
+  order: number;
+  durationMinutes: number;
+  summary: string;
+  videoUrl?: string;
+  videoDuration?: string;
+  contentMarkdown?: string;
+  resources?: LessonResource[];
+  hasQuiz?: boolean;
+  quizId?: string;
+  isPreviewFree?: boolean;
+}
+
+export interface OnlineCourseModule {
+  id: string;
+  courseId: string;
+  title: string;
+  order: number;
+  description: string;
+  lessons: OnlineLesson[];
+}
+
+export interface OnlineLiveClass {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  title: string;
+  description: string;
+  instructorName: string;
+  scheduledDateTimeUTC: string;
+  durationMinutes: number;
+  meetingPlatform: 'Google Meet' | 'Zoom' | 'Microsoft Teams' | string;
+  meetingLink: string;
+  classNotes?: string;
+  recordingUrl?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  questionText: string;
+  type: 'multiple_choice' | 'true_false' | 'short_answer';
+  options?: string[];
+  correctAnswerIndex?: number;
+  correctAnswerText?: string;
+  explanation?: string;
+}
+
+export interface OnlineQuiz {
+  id: string;
+  courseId: string;
+  courseTitle?: string;
+  lessonId?: string;
+  title: string;
+  description: string;
+  passingScorePercent: number;
+  timeLimitMinutes: number;
+  maxAttempts: number;
+  questions: QuizQuestion[];
+}
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  scorePercent: number;
+  passed: boolean;
+  answers: Record<string, any>;
+  completedAt: string;
+}
+
+export interface OnlineAssignment {
+  id: string;
+  courseId: string;
+  courseTitle?: string;
+  moduleId?: string;
+  title: string;
+  description: string;
+  instructionsUrl?: string;
+  maxScore: number;
+  dueDate: string;
+  createdAt: string;
+}
+
+export interface OnlineAssignmentSubmission {
+  id: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  courseId: string;
+  courseTitle: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  studentLocation: 'Nigeria' | 'Outside Nigeria' | string;
+  country: string;
+  submissionText?: string;
+  fileUrl?: string;
+  fileName?: string;
+  submittedAt: string;
+  score?: number;
+  maxScore: number;
+  graded: boolean;
+  instructorFeedback?: string;
+  gradedBy?: string;
+  gradedAt?: string;
+}
+
+export interface OnlineEnrollment {
+  id: string;
+  enrollmentNumber: string; // e.g. AITI/ONL/2026/00018
+  studentId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  whatsapp?: string;
+  country: string;
+  city?: string;
+  nationality?: string;
+  studentLocation: 'Nigeria' | 'Outside Nigeria';
+  studentType: 'ACADEMIC_STUDENT' | 'SHORT_COURSE_PARTICIPANT' | 'CORPORATE_PARTICIPANT' | 'ORGANIZATIONAL_TRAINEE' | 'INTERNATIONAL_ONLINE_STUDENT';
+  currency: 'NGN' | 'USD';
+  amountPaid: number;
+  regularPrice: number;
+  discountAmount?: number;
+  couponCode?: string;
+  paymentGateway: 'paystack' | 'flutterwave' | 'stripe' | 'international_card' | 'free' | 'bank_transfer';
+  paymentReference: string;
+  paymentStatus: 'paid' | 'pending' | 'free';
+  studyMode: 'Physical' | 'Online' | 'Hybrid';
+  courseId: string;
+  courseTitle: string;
+  courseCode?: string;
+  categoryName?: string;
+  completedLessonIds: string[];
+  progressPercent: number;
+  enrolledAt: string;
+  lastAccessedAt?: string;
+  certificateIssued: boolean;
+  certificateNumber?: string;
+  certificateIssuedAt?: string;
+  timezone: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  currency?: 'NGN' | 'USD';
+  applicableCourseId?: string;
+  validUntil: string;
+  maxUses?: number;
+  usedCount: number;
+  active: boolean;
+}
+
 export interface ShortCourseCategory {
   id: string;
   name: string;
@@ -529,9 +704,10 @@ export interface CorporateInvoice {
 export interface ShortCourseMaterial {
   id: string;
   title: string;
-  type: 'pdf' | 'slides' | 'code' | 'video' | 'lab_sheet';
+  type: 'pdf' | 'slides' | 'code' | 'video' | 'lab_sheet' | 'zip' | 'document' | string;
   size?: string;
   downloadUrl: string;
+  uploadedAt?: string;
 }
 
 export interface ShortCourseAssignmentItem {
@@ -584,7 +760,7 @@ export interface ShortCourseEnrollment {
   attendanceLog?: { date: string; topic: string; status: 'present' | 'absent' | 'late' }[];
   materials?: ShortCourseMaterial[];
   assignments?: ShortCourseAssignmentItem[];
-  announcements?: { id: string; title: string; date: string; message: string }[];
+  announcements?: { id: string; title: string; date: string; message?: string; content?: string }[];
   certificateIssued?: boolean;
   certificateNumber?: string; // e.g. AITI/CERT/STC/2026/00025
   certificateDate?: string;
@@ -952,7 +1128,7 @@ export interface CRMLead {
   phone: string;
   whatsapp?: string;
   programInterest: string;
-  source: 'website' | 'whatsapp' | 'contact_form' | 'walk_in' | 'referral' | 'event';
+  source: 'website' | 'whatsapp' | 'contact_form' | 'walk_in' | 'referral' | 'event' | 'corporate_inquiry' | 'short_course_registration' | string;
   status: 'new' | 'contacted' | 'interested' | 'application_started' | 'applied' | 'admitted' | 'enrolled' | 'not_interested';
   notes?: string;
   assignedTo?: string;

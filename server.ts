@@ -1775,6 +1775,7 @@ async function startServer() {
         id: `stc-enr-${Date.now()}`,
         registrationId,
         enrollmentNumber: registrationId,
+        shortCourseId: payload.shortCourseId || payload.courseId || courseObj?.id || 'short-course-default',
         courseId: payload.courseId || courseObj?.id || 'short-course-default',
         courseTitle: payload.courseTitle || courseObj?.title || 'Applied Tech Short Course',
         fullName: payload.fullName || payload.name,
@@ -1822,10 +1823,12 @@ async function startServer() {
           {
             id: 'asg-1',
             title: 'Module 1 Capstone Project: Applied Real-world Implementation',
+            description: 'Implement the core practical exercise assigned in class and upload your repository link or zip archive.',
             dueDate: '2026-09-20',
             status: 'pending',
             maxScore: 100,
-            instructions: 'Implement the core practical exercise assigned in class and upload your repository link or zip archive.'
+            submitted: false,
+            graded: false
           }
         ],
         announcements: [

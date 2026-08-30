@@ -19,19 +19,22 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
   const navLinks = [
     { label: 'Home', view: 'home' },
-    { label: 'Training Catalogue', view: 'training_catalogue' },
-    { label: 'Short-Term Courses', view: 'short_courses' },
+    { label: 'Programs', view: 'programs' },
+    { label: 'Short Courses', view: 'short_courses' },
+    { label: 'Online Training', view: 'online_courses', badge: 'Live LMS' },
+    { label: 'International', view: 'international', badge: '$ USD', isSpecial: true },
     { label: 'Corporate Training', view: 'corporate' },
-    { label: 'Admissions 2026', view: 'admissions' },
-    { label: 'Verify Portal', view: 'verify' },
-    { label: 'About AITI', view: 'about' },
+    { label: 'Admissions', view: 'admissions' },
+    { label: 'Verify Certificate', view: 'verify' },
+    { label: 'About', view: 'about' },
     { label: 'Contact', view: 'contact' },
   ];
 
   const portals = [
-    { label: 'Admin Command Center', role: 'super_admin', view: 'portal_admin', desc: 'Full Institutional Control & Metrics' },
+    { label: 'Admin Command Center', role: 'super_admin', view: 'portal_admin', desc: 'Full Institutional Control, Online & Finance' },
+    { label: 'Online LMS Classroom', role: 'student', view: 'portal_online_lms', desc: 'Active Video Lessons, Quizzes & Meets' },
     { label: 'Admissions Desk', role: 'admissions_officer', view: 'portal_admissions', desc: 'Review Applications & Issue Letters' },
-    { label: 'Finance & Bursary', role: 'finance_officer', view: 'portal_finance', desc: 'Invoices, Fees & Payments' },
+    { label: 'Finance & Bursary', role: 'finance_officer', view: 'portal_finance', desc: 'Invoices, Fees & NGN/USD Revenue' },
     { label: 'Instructor Portal', role: 'instructor', view: 'portal_instructor', desc: 'Classes, Attendance & Assignments' },
     { label: 'Student Portal', role: 'student', view: 'portal_student', desc: 'My Courses, Results, ID Card & Fees' },
     { label: 'Parent / Guardian Portal', role: 'parent', view: 'portal_parent', desc: 'Attendance & Performance Monitor' },
@@ -108,18 +111,27 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5">
             {navLinks.map((link) => (
               <button
                 key={link.view}
                 onClick={() => onNavigate(link.view)}
-                className={`px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1 ${
                   currentView === link.view
-                    ? 'text-cyan-400 bg-cyan-950/40 border border-cyan-800/50'
+                    ? 'text-cyan-400 bg-cyan-950/50 border border-cyan-800/60'
+                    : link.isSpecial
+                    ? 'text-amber-300 hover:text-amber-200 bg-amber-950/30 border border-amber-800/40'
                     : 'text-slate-300 hover:text-white hover:bg-slate-900'
                 }`}
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.badge && (
+                  <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
+                    link.isSpecial ? 'bg-amber-900/80 text-amber-300' : 'bg-cyan-900/80 text-cyan-300'
+                  }`}>
+                    {link.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>

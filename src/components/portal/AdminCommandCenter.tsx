@@ -9,6 +9,8 @@ import { api } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { TrainingManagement } from './TrainingManagement';
+import { OnlineCourseAdminManager } from '../admin/OnlineCourseAdminManager';
+import { Laptop, Globe } from 'lucide-react';
 
 export const AdminCommandCenter: React.FC = () => {
   const { settings, refreshSettings, updateSettings } = useSettings();
@@ -16,7 +18,7 @@ export const AdminCommandCenter: React.FC = () => {
 
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'training' | 'ai_assistant' | 'settings' | 'export_sql' | 'audit_logs'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'training' | 'online_manager' | 'ai_assistant' | 'settings' | 'export_sql' | 'audit_logs'>('metrics');
 
   // AI Command Chat State
   const [aiQuery, setAiQuery] = useState('');
@@ -137,6 +139,7 @@ export const AdminCommandCenter: React.FC = () => {
         {[
           { id: 'metrics', label: 'Institutional KPIs & Summary', icon: <BarChart3 className="w-4 h-4" /> },
           { id: 'training', label: 'Training & Courses Manager', icon: <BookOpen className="w-4 h-4 text-cyan-400" /> },
+          { id: 'online_manager', label: 'Online Training & Multi-Currency', icon: <Laptop className="w-4 h-4 text-emerald-400" /> },
           { id: 'ai_assistant', label: 'Gemini Executive Intelligence', icon: <Bot className="w-4 h-4 text-cyan-400" /> },
           { id: 'settings', label: 'Institute Information & Settings', icon: <Settings className="w-4 h-4" /> },
           { id: 'export_sql', label: 'Supabase / PostgreSQL DDL', icon: <Database className="w-4 h-4 text-emerald-400" /> },
@@ -156,6 +159,15 @@ export const AdminCommandCenter: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* ========================================================= */}
+      {/* ONLINE & MULTI-CURRENCY MANAGER */}
+      {/* ========================================================= */}
+      {activeTab === 'online_manager' && (
+        <div className="animate-in fade-in duration-200">
+          <OnlineCourseAdminManager />
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* TRAINING MANAGEMENT */}
