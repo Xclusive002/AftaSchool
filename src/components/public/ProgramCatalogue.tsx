@@ -7,6 +7,8 @@ import {
 import { api } from '../../services/api';
 import { Program, Course } from '../../types';
 import { useSettings } from '../../context/SettingsContext';
+import { FeeNoticeDisplay } from './FeeNoticeDisplay';
+import { QuoteRequestModal } from './QuoteRequestModal';
 
 interface ProgramCatalogueProps {
   onNavigate: (view: string, prefillProgramId?: string) => void;
@@ -20,6 +22,29 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
   const [activeTab, setActiveTab] = useState<'all' | 'certificate' | 'diploma'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+
+  // Quote modal state
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteModalData, setQuoteModalData] = useState<{
+    courseTitle?: string;
+    courseId?: string;
+    courseCode?: string;
+    trainingType?: any;
+    deliveryMode?: any;
+    isInternational?: boolean;
+  }>({});
+
+  const handleOpenQuoteModal = (opts?: {
+    courseTitle?: string;
+    courseId?: string;
+    courseCode?: string;
+    trainingType?: any;
+    deliveryMode?: any;
+    isInternational?: boolean;
+  }) => {
+    setQuoteModalData(opts || {});
+    setIsQuoteModalOpen(true);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -132,12 +157,9 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
                     {prog.duration} • {prog.type.toUpperCase()}
                   </span>
                   
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block uppercase">Tuition Fee</span>
-                    <strong className="text-base text-emerald-400 font-extrabold font-mono">
-                      NGN {Number(prog.tuitionFee).toLocaleString()}
-                    </strong>
-                  </div>
+                  <span className="text-[11px] font-semibold text-amber-400 bg-amber-950/50 px-2.5 py-1 rounded-lg border border-amber-800/50">
+                    Fee on Request
+                  </span>
                 </div>
 
                 {/* Title & Desc */}
@@ -170,6 +192,18 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
                   </div>
                 </div>
 
+                {/* Fee Notice Section */}
+                <FeeNoticeDisplay
+                  courseTitle={prog.title}
+                  courseId={prog.id}
+                  courseCode={prog.type}
+                  exactPrice={prog.tuitionFee}
+                  trainingType={prog.type === 'diploma' ? 'diploma_program' : 'certificate_program'}
+                  deliveryMode="physical_campus"
+                  onOpenQuoteModal={handleOpenQuoteModal}
+                  layout="card"
+                />
+
                 {/* Suitable For */}
                 <div>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
@@ -200,7 +234,7 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
                   onClick={() => setSelectedProgram(prog)}
                   className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-xs transition-colors"
                 >
-                  View Details
+                  Curriculum Details
                 </button>
               </div>
 
@@ -264,16 +298,20 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
             <div className="space-y-4 text-xs text-slate-300">
               <p className="leading-relaxed">{selectedProgram.description}</p>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-slate-500 uppercase text-[10px] block">Tuition Fee</span>
-                  <strong className="text-emerald-400 text-sm font-mono">NGN {selectedProgram.tuitionFee.toLocaleString()}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500 uppercase text-[10px] block">Application Fee</span>
-                  <strong className="text-white text-sm font-mono">NGN {Number(settings?.admissions.applicationFee || 5000).toLocaleString()}</strong>
-                </div>
-              </div>
+              {/* Fee Notice Display */}
+              <FeeNoticeDisplay
+                courseTitle={selectedProgram.title}
+                courseId={selectedProgram.id}
+                courseCode={selectedProgram.type}
+                exactPrice={selectedProgram.tuitionFee}
+                trainingType={selectedProgram.type === 'diploma' ? 'diploma_program' : 'certificate_program'}
+                deliveryMode="physical_campus"
+                onOpenQuoteModal={(opts) => {
+                  setSelectedProgram(null);
+                  handleOpenQuoteModal(opts);
+                }}
+                layout="modal"
+              />
 
               <div>
                 <h4 className="font-bold text-white uppercase text-[11px] mb-2">Detailed Course Modules</h4>
@@ -316,6 +354,18 @@ export const ProgramCatalogue: React.FC<ProgramCatalogueProps> = ({ onNavigate }
           </div>
         </div>
       )}
+
+      {/* Quote Request Modal */}
+      <QuoteRequestModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
+        initialCourseTitle={quoteModalData.courseTitle}
+        initialCourseId={quoteModalData.courseId}
+        initialCourseCode={quoteModalData.courseCode}
+        initialTrainingType={quoteModalData.trainingType || 'certificate_program'}
+        initialDeliveryMode={quoteModalData.deliveryMode || 'physical_campus'}
+        initialIsInternational={quoteModalData.isInternational || false}
+      />
 
     </div>
   );

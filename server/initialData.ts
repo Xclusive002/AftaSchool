@@ -1,4 +1,4 @@
-import { InstituteSettings, Program, Course, Application, AdmissionRecord, Student, AcademicClass, TimetableEntry, AttendanceRecord, Assignment, AssignmentSubmission, AssessmentResult, Invoice, PaymentTransaction, Certificate, Announcement, NewsEventItem, GalleryItem, CRMLead, ContactMessage, AuditLog, Testimonial, FaqItem, UserProfile, ShortCourseCategory, ShortCourse, CorporateTrainingRequest, ShortCourseEnrollment, CorporateQuotation, CorporateInvoice } from '../src/types';
+import { InstituteSettings, Program, Course, Application, AdmissionRecord, Student, AcademicClass, TimetableEntry, AttendanceRecord, Assignment, AssignmentSubmission, AssessmentResult, Invoice, PaymentTransaction, Certificate, Announcement, NewsEventItem, GalleryItem, CRMLead, ContactMessage, AuditLog, Testimonial, FaqItem, UserProfile, ShortCourseCategory, ShortCourse, CorporateTrainingRequest, ShortCourseEnrollment, CorporateQuotation, CorporateInvoice, QuoteRequest, PriceVersionLog } from '../src/types';
 import { comprehensiveCategories } from './courses/categories';
 import { comprehensiveShortCourses } from './courses/courses';
 
@@ -96,6 +96,16 @@ export const initialSettings: InstituteSettings = {
     flutterwavePublicKey: "FLWPUBK_TEST-aiti_demo_key-X",
     enableLivePayments: false,
     smsSenderId: "AITI"
+  },
+  pricing: {
+    publicPriceDisplay: "quote_only",
+    displayDisclaimer: true,
+    customDisclaimerText: "Training fees are subject to change based on schedule, delivery format, cohort timing, and current institutional promotion. Please contact AITI for the current applicable fee before making payment.",
+    customInternationalDisclaimerText: "International online training fees are subject to change. Please contact AITI to receive the current USD fee before making payment.",
+    allowWhatsappQuotes: true,
+    allowDirectCalls: true,
+    quoteExpiryDaysDefault: 14,
+    showApplicationFee: "public"
   }
 };
 
@@ -1326,4 +1336,165 @@ export const initialShortCourseEnrollments: ShortCourseEnrollment[] = [
     createdAt: "2026-08-26T15:30:00Z"
   }
 ];
+
+export const initialQuoteRequests: QuoteRequest[] = [
+  {
+    id: "qr-2026-001",
+    referenceNumber: "AITI/QT/2026/000001",
+    createdAt: "2026-08-28T09:30:00Z",
+    updatedAt: "2026-08-28T11:00:00Z",
+    fullName: "Babatunde Adeleke",
+    email: "babatunde.adeleke@gmail.com",
+    phone: "08034567890",
+    whatsapp: "08034567890",
+    country: "Nigeria",
+    city: "Ilorin",
+    studentType: "nigerian_local",
+    courseId: "sc-react-next",
+    courseTitle: "Full-Stack React & Next.js Masterclass",
+    courseCode: "AITI-STC-002",
+    trainingType: "short_course",
+    deliveryMode: "physical_campus",
+    preferredSchedule: "Weekday Morning (9:00 AM - 12:00 PM)",
+    preferredStartDate: "2026-09-14",
+    message: "I would like to inquire about the current tuition fee for the upcoming September cohort at Tanke campus.",
+    status: "quote_sent",
+    assignedStaff: "Admissions Office",
+    currency: "NGN",
+    baseFee: 75000,
+    additionalFees: 5000,
+    additionalFeesBreakdown: [
+      { id: "fee-1", description: "Course Lab Pack & Starter Assets", amount: 5000 }
+    ],
+    discountAmount: 10000,
+    discountReason: "Early Bird September Cohort Discount",
+    finalQuotedAmount: 70000,
+    quoteSentAt: "2026-08-28T11:00:00Z",
+    quoteValidUntil: "2026-09-11",
+    adminNotes: "Applicant contacted on WhatsApp. Sent official quote with 10k early registration incentive.",
+    quoteMessageToApplicant: "Dear Babatunde, thank you for your interest in AITI. Your confirmed fee for the Full-Stack React & Next.js Masterclass is NGN 70,000 (discounted from ₦75,000 + ₦5,000 lab pack). This quote is valid until September 11, 2026."
+  },
+  {
+    id: "qr-2026-002",
+    referenceNumber: "AITI/QT/2026/000002",
+    createdAt: "2026-08-29T14:15:00Z",
+    updatedAt: "2026-08-29T14:15:00Z",
+    fullName: "Kwame Mensah",
+    email: "kwame.mensah@ghantech.io",
+    phone: "+233241234567",
+    whatsapp: "+233241234567",
+    country: "Ghana",
+    city: "Accra",
+    studentType: "international_online",
+    courseId: "sc-powerbi-sql",
+    courseTitle: "Power BI & SQL Data Analytics Masterclass",
+    courseCode: "AITI-STC-003",
+    trainingType: "online_course",
+    deliveryMode: "online_live",
+    preferredSchedule: "Executive Evening (5:00 PM - 7:30 PM WAT)",
+    preferredStartDate: "2026-09-21",
+    message: "Interested in the live online cohort from Ghana. Please send current USD fee and payment terms.",
+    status: "new",
+    assignedStaff: "Global Admissions Desk",
+    currency: "USD"
+  },
+  {
+    id: "qr-2026-003",
+    referenceNumber: "AITI/QT/2026/000003",
+    createdAt: "2026-08-29T16:40:00Z",
+    updatedAt: "2026-08-30T08:20:00Z",
+    fullName: "Folashade Oladipo",
+    email: "folashade.oladipo@zenithbank.com",
+    phone: "08123456789",
+    whatsapp: "08123456789",
+    country: "Nigeria",
+    city: "Lagos",
+    studentType: "corporate_group",
+    participantCount: 6,
+    courseTitle: "Enterprise Cybersecurity & Network Defense",
+    trainingType: "corporate_training",
+    deliveryMode: "hybrid",
+    preferredSchedule: "Weekend Intensive",
+    preferredStartDate: "2026-10-03",
+    message: "We need custom group training for 6 branch IT compliance officers.",
+    status: "processing",
+    assignedStaff: "Corporate Partnerships Director",
+    currency: "NGN",
+    baseFee: 360000,
+    discountAmount: 40000,
+    discountReason: "Corporate Group Tier 1 Incentive",
+    finalQuotedAmount: 320000,
+    adminNotes: "Drafting formal custom corporate proposal and schedule alignment."
+  },
+  {
+    id: "qr-2026-004",
+    referenceNumber: "AITI/QT/2026/000004",
+    createdAt: "2026-08-30T08:00:00Z",
+    updatedAt: "2026-08-30T09:45:00Z",
+    fullName: "Amina Yusuf",
+    email: "amina.yusuf@kwarastate.gov.ng",
+    phone: "08051239876",
+    whatsapp: "08051239876",
+    country: "Nigeria",
+    city: "Ilorin",
+    studentType: "nigerian_local",
+    programId: "prog-dip-6m",
+    programTitle: "6-Month Professional Diploma Program",
+    trainingType: "diploma_program",
+    deliveryMode: "physical_campus",
+    preferredSchedule: "Weekday Morning",
+    message: "Seeking admission for the 6-Month Diploma in Software Engineering. Need current tuition structure.",
+    status: "accepted",
+    assignedStaff: "Admissions Office",
+    currency: "NGN",
+    baseFee: 120000,
+    discountAmount: 10000,
+    discountReason: "Merit Tech Applicant Waiver",
+    finalQuotedAmount: 110000,
+    quoteSentAt: "2026-08-30T08:45:00Z",
+    quoteValidUntil: "2026-09-30",
+    convertedApplicationId: "app-2026-amina",
+    adminNotes: "Applicant accepted quote and progressed to application submission."
+  }
+];
+
+export const initialPriceVersions: PriceVersionLog[] = [
+  {
+    id: "pv-001",
+    itemId: "prog-cert-3m",
+    itemTitle: "3-Month Certificate Program",
+    itemType: "program",
+    currency: "NGN",
+    previousPrice: 60000,
+    newPrice: 65000,
+    changedBy: "Director of Academic Affairs",
+    changedAt: "2026-08-01T08:00:00Z",
+    reason: "Updated 2026/2027 curriculum materials and upgraded technical workstation labs."
+  },
+  {
+    id: "pv-002",
+    itemId: "prog-dip-6m",
+    itemTitle: "6-Month Professional Diploma Program",
+    itemType: "program",
+    currency: "NGN",
+    previousPrice: 110000,
+    newPrice: 120000,
+    changedBy: "Executive Directorate",
+    changedAt: "2026-08-01T08:00:00Z",
+    reason: "Added Capstone Cloud Hosting and AI Developer Subscriptions into standard tuition."
+  },
+  {
+    id: "pv-003",
+    itemId: "sc-gen-ai",
+    itemTitle: "Generative AI Engineering & Automation",
+    itemType: "short_course",
+    currency: "NGN",
+    previousPrice: 35000,
+    newPrice: 40000,
+    changedBy: "Head of Training",
+    changedAt: "2026-08-15T10:30:00Z",
+    reason: "Added specialized Gemini 2.5 Live API and Claude Enterprise tooling modules."
+  }
+];
+
 

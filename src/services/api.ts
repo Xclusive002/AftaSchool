@@ -3,7 +3,7 @@ import {
   Student, AcademicClass, TimetableEntry, AttendanceRecord, Assignment, 
   AssignmentSubmission, AssessmentResult, Invoice, PaymentTransaction, 
   Certificate, Announcement, NewsEventItem, GalleryItem, CRMLead, 
-  ContactMessage, AuditLog, Testimonial, FaqItem 
+  ContactMessage, AuditLog, Testimonial, FaqItem, QuoteRequest, PriceVersionLog
 } from '../types';
 
 export const api = {
@@ -449,6 +449,117 @@ export const api = {
     });
     const data = await res.json();
     return data.reply || "Intelligence query completed.";
+  },
+
+  // Quote Requests & Current Fee System
+  async submitQuoteRequest(payload: Partial<QuoteRequest>): Promise<{ success: boolean; referenceNumber: string; quoteRequest: QuoteRequest; message: string }> {
+    const res = await fetch('/api/public/quote-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to submit quote request');
+    return data;
+  },
+
+  async getAdminQuoteRequests(params?: { status?: string; search?: string; studentType?: string }): Promise<QuoteRequest[]> {
+    const query = new URLSearchParams(params as any || {}).toString();
+    const res = await fetch(`/api/admin/quote-requests?${query}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch quote requests');
+    return data.quoteRequests || [];
+  },
+
+  async getAdminQuoteRequest(id: string): Promise<QuoteRequest> {
+    const res = await fetch(`/api/admin/quote-requests/${id}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Quote request not found');
+    return data.quoteRequest;
+  },
+
+  async updateAdminQuoteRequest(id: string, updates: Partial<QuoteRequest> & { adminName?: string }): Promise<QuoteRequest> {
+    const res = await fetch(`/api/admin/quote-requests/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to update quote request');
+    return data.quoteRequest;
+  },
+
+  async sendAdminQuote(id: string, payload: {
+    baseFee: number;
+    currency?: 'NGN' | 'USD';
+    additionalFees?: number;
+    additionalFeesBreakdown?: { description: string; amount: number }[];
+    discountAmount?: number;
+    discountReason?: string;
+    finalQuotedAmount?: number;
+    quoteValidUntil?: string;
+    quoteMessageToApplicant?: string;
+    adminNotes?: string;
+    assignedStaff?: string;
+    adminName?: string;
+  }): Promise<QuoteRequest> {
+    const res = await fetch(`/api/admin/quote-requests/${id}/send-quote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to send official quote');
+    return data.quoteRequest;
+  },
+
+  async convertQuoteToApplication(id: string, adminName?: string): Promise<{ success: boolean; application: any; quoteRequest: QuoteRequest }> {
+    const res = await fetch(`/api/admin/quote-requests/${id}/convert-application`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminName })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to convert quote to application');
+    return data;
+  },
+
+  async generateQuoteInvoice(id: string, adminName?: string): Promise<{ success: boolean; invoice: any; quoteRequest: QuoteRequest }> {
+    const res = await fetch(`/api/admin/quote-requests/${id}/generate-invoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminName })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to generate invoice');
+    return data;
+  },
+
+  async getPriceHistory(): Promise<PriceVersionLog[]> {
+    const res = await fetch('/api/admin/price-history');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch price history');
+    return data.priceVersions || [];
+  },
+
+  async logPriceRevision(payload: {
+    itemId: string;
+    itemTitle: string;
+    itemType: 'program' | 'short_course' | 'online_course' | 'application_fee';
+    currency: 'NGN' | 'USD';
+    previousPrice: number;
+    newPrice: number;
+    changedBy: string;
+    reason?: string;
+  }): Promise<PriceVersionLog> {
+    const res = await fetch('/api/admin/price-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to record price change');
+    return data.priceVersion;
   },
 
   // Reset Demo

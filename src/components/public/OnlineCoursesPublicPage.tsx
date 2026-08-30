@@ -7,6 +7,8 @@ import {
 import { INITIAL_ONLINE_COURSES, DetailedOnlineCourse } from '../../data/onlineCoursesSeed';
 import { formatCurrency, calculateStudentPricing, COUNTRY_OPTIONS, SupportedCurrency } from '../../services/currency';
 import { useSettings } from '../../context/SettingsContext';
+import { QuoteRequestModal } from './QuoteRequestModal';
+import { FeeNoticeDisplay } from './FeeNoticeDisplay';
 
 interface OnlineCoursesPublicPageProps {
   onNavigate: (view: string, id?: string) => void;
@@ -21,6 +23,29 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedDeliveryMode, setSelectedDeliveryMode] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Quote modal state
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteModalData, setQuoteModalData] = useState<{
+    courseTitle?: string;
+    courseId?: string;
+    courseCode?: string;
+    trainingType?: any;
+    deliveryMode?: any;
+    isInternational?: boolean;
+  }>({});
+
+  const handleOpenQuoteModal = (opts?: {
+    courseTitle?: string;
+    courseId?: string;
+    courseCode?: string;
+    trainingType?: any;
+    deliveryMode?: any;
+    isInternational?: boolean;
+  }) => {
+    setQuoteModalData(opts || {});
+    setIsQuoteModalOpen(true);
+  };
   
   // Selected course for full syllabus & lesson preview modal
   const [activeCourseModal, setActiveCourseModal] = useState<DetailedOnlineCourse | null>(null);
@@ -317,53 +342,33 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
 
                 {/* Bottom Pricing & CTAs */}
                 <div className="mt-6 pt-4 border-t border-slate-800 space-y-3">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        {studentLocation === 'Nigeria' ? 'Nigerian Local Tuition' : 'International Tuition'}
-                      </span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black text-emerald-400">
-                          {formatCurrency(pricing.amount, pricing.currency, { showCode: true })}
-                        </span>
-                        {pricing.hasPromo && (
-                          <span className="text-xs text-slate-500 line-through">
-                            {formatCurrency(pricing.regularAmount, pricing.currency)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  <FeeNoticeDisplay
+                    courseTitle={course.title}
+                    courseId={course.id}
+                    courseCode={course.id}
+                    exactPrice={course.tuitionNGN || 70000}
+                    exactPriceUSD={course.tuitionUSD || 120}
+                    isInternational={studentLocation === 'Outside Nigeria'}
+                    trainingType="online_course"
+                    deliveryMode="online_live"
+                    onOpenQuoteModal={handleOpenQuoteModal}
+                    layout="card"
+                  />
 
+                  <div className="flex items-center justify-between text-xs pt-1 px-1">
                     <button
                       onClick={() => setActiveCourseModal(course)}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 font-bold underline"
+                      className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1"
                     >
-                      Syllabus Details
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>View Full Syllabus</span>
                     </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        setEnrollModalCourse(course);
-                        setEnrollForm(prev => ({
-                          ...prev,
-                          studyMode: 'Online',
-                          country: studentLocation === 'Nigeria' ? 'Nigeria' : 'United States'
-                        }));
-                      }}
-                      className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-md"
-                    >
-                      <span>Enroll Now</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-
                     <button
                       onClick={() => setActiveCourseModal(course)}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1"
+                      className="text-slate-400 hover:text-slate-200 flex items-center gap-1"
                     >
-                      <PlayCircle className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Preview</span>
+                      <PlayCircle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Free Lesson Preview</span>
                     </button>
                   </div>
                 </div>
@@ -539,33 +544,23 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
 
             </div>
 
-            {/* Modal Footer with Enrollment CTA */}
-            <div className="p-6 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-10">
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase font-bold">
-                  {studentLocation === 'Nigeria' ? 'Local Tuition' : 'International Tuition'}
-                </span>
-                <span className="text-xl font-black text-emerald-400">
-                  {formatCurrency(
-                    calculateStudentPricing(activeCourseModal, studentLocation, 'Online').amount,
-                    calculateStudentPricing(activeCourseModal, studentLocation, 'Online').currency,
-                    { showCode: true }
-                  )}
-                </span>
-              </div>
-
-              <div className="flex gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => {
-                    setActiveCourseModal(null);
-                    setEnrollModalCourse(activeCourseModal);
-                  }}
-                  className="w-full sm:w-auto bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
-                >
-                  <span>Proceed to Online Enrollment</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+            {/* Modal Footer with Fee Notice & Quote CTA */}
+            <div className="p-6 border-t border-slate-800 bg-slate-950 sticky bottom-0 z-10">
+              <FeeNoticeDisplay
+                courseTitle={activeCourseModal.title}
+                courseId={activeCourseModal.id}
+                courseCode={activeCourseModal.id}
+                exactPrice={activeCourseModal.tuitionNGN || 70000}
+                exactPriceUSD={activeCourseModal.tuitionUSD || 120}
+                isInternational={studentLocation === 'Outside Nigeria'}
+                trainingType="online_course"
+                deliveryMode="online_live"
+                onOpenQuoteModal={(opts) => {
+                  setActiveCourseModal(null);
+                  handleOpenQuoteModal(opts);
+                }}
+                layout="modal"
+              />
             </div>
 
           </div>
@@ -828,6 +823,18 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
           </div>
         </div>
       )}
+
+      {/* Quote Request Modal */}
+      <QuoteRequestModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
+        initialCourseTitle={quoteModalData.courseTitle}
+        initialCourseId={quoteModalData.courseId}
+        initialCourseCode={quoteModalData.courseCode}
+        initialTrainingType={quoteModalData.trainingType || 'online_course'}
+        initialDeliveryMode={quoteModalData.deliveryMode || 'online_live'}
+        initialIsInternational={quoteModalData.isInternational || (studentLocation === 'Outside Nigeria')}
+      />
 
     </div>
   );

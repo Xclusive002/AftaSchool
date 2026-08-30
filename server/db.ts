@@ -7,7 +7,7 @@ import {
   PaymentTransaction, Certificate, Announcement, NewsEventItem,
   GalleryItem, CRMLead, ContactMessage, AuditLog, Testimonial, FaqItem, UserProfile,
   ShortCourseCategory, ShortCourse, CorporateTrainingRequest, ShortCourseEnrollment,
-  CorporateQuotation, CorporateInvoice
+  CorporateQuotation, CorporateInvoice, QuoteRequest, PriceVersionLog
 } from '../src/types';
 import {
   initialSettings, initialPrograms, initialCourses, initialUsers,
@@ -17,7 +17,7 @@ import {
   initialAnnouncements, initialNewsEvents, initialGallery, initialLeads,
   initialContacts, initialAuditLogs, initialTestimonials, initialFaqs,
   initialShortCourseCategories, initialShortCourses, initialCorporateRequests, initialShortCourseEnrollments,
-  initialCorporateQuotations, initialCorporateInvoices
+  initialCorporateQuotations, initialCorporateInvoices, initialQuoteRequests, initialPriceVersions
 } from './initialData';
 
 export interface DatabaseState {
@@ -26,6 +26,8 @@ export interface DatabaseState {
   courses: Course[];
   shortCourseCategories: ShortCourseCategory[];
   shortCourses: ShortCourse[];
+  quoteRequests: QuoteRequest[];
+  priceVersions: PriceVersionLog[];
   corporateRequests: CorporateTrainingRequest[];
   corporateQuotations: CorporateQuotation[];
   corporateInvoices: CorporateInvoice[];
@@ -87,11 +89,17 @@ class DatabaseService {
         }
 
         return {
-          settings: parsed.settings || initialSettings,
+          settings: {
+            ...initialSettings,
+            ...(parsed.settings || {}),
+            pricing: parsed.settings?.pricing || initialSettings.pricing
+          },
           programs: parsed.programs || initialPrograms,
           courses: parsed.courses || initialCourses,
           shortCourseCategories: parsed.shortCourseCategories?.length ? parsed.shortCourseCategories : initialShortCourseCategories,
           shortCourses: mergedShortCourses,
+          quoteRequests: parsed.quoteRequests || initialQuoteRequests,
+          priceVersions: parsed.priceVersions || initialPriceVersions,
           corporateRequests: parsed.corporateRequests || initialCorporateRequests,
           corporateQuotations: parsed.corporateQuotations || initialCorporateQuotations,
           corporateInvoices: parsed.corporateInvoices || initialCorporateInvoices,
@@ -129,6 +137,8 @@ class DatabaseService {
       courses: initialCourses,
       shortCourseCategories: initialShortCourseCategories,
       shortCourses: initialShortCourses,
+      quoteRequests: initialQuoteRequests,
+      priceVersions: initialPriceVersions,
       corporateRequests: initialCorporateRequests,
       corporateQuotations: initialCorporateQuotations,
       corporateInvoices: initialCorporateInvoices,
@@ -297,6 +307,11 @@ class DatabaseService {
 
   public generateNextShortCourseEnrollmentId(): string {
     return this.generateNextShortCourseRegistrationId();
+  }
+
+  public generateNextQuoteRequestId(): string {
+    const count = (this.state.quoteRequests?.length || 0) + 1;
+    return `AITI/QT/2026/${count.toString().padStart(6, '0')}`;
   }
 
   // Generate complete PostgreSQL DDL and Supabase migration script

@@ -110,6 +110,103 @@ export interface InstituteSettings {
     enableLivePayments: boolean;
     smsSenderId: string;
   };
+  pricing: {
+    publicPriceDisplay: 'quote_only' | 'show_exact' | 'show_range'; // Default: 'quote_only'
+    displayDisclaimer: boolean;
+    customDisclaimerText?: string;
+    customInternationalDisclaimerText?: string;
+    allowWhatsappQuotes: boolean;
+    allowDirectCalls: boolean;
+    quoteExpiryDaysDefault: number; // e.g. 14
+    showApplicationFee: 'public' | 'on_request' | 'waived';
+  };
+}
+
+export type QuoteRequestStatus = 
+  | 'new' 
+  | 'contacted' 
+  | 'processing' 
+  | 'quote_sent' 
+  | 'awaiting_response' 
+  | 'accepted' 
+  | 'declined' 
+  | 'converted_to_application' 
+  | 'expired';
+
+export interface QuoteBreakdownItem {
+  id?: string;
+  description: string;
+  amount: number;
+}
+
+export interface QuoteRequest {
+  id: string;
+  referenceNumber: string; // "AITI/QT/2026/000001"
+  createdAt: string;
+  updatedAt: string;
+  
+  // Personal Details
+  fullName: string;
+  email: string;
+  phone: string;
+  whatsapp?: string;
+  country: string;
+  city?: string;
+  studentType: 'nigerian_local' | 'international_online' | 'corporate_group' | 'sponsored';
+  
+  // Training Details
+  courseId?: string;
+  courseTitle: string;
+  courseCode?: string;
+  programId?: string;
+  programTitle?: string;
+  trainingType: 'short_course' | 'certificate_program' | 'diploma_program' | 'online_course' | 'corporate_training';
+  deliveryMode: 'physical_campus' | 'online_live' | 'hybrid' | 'weekend_intensive';
+  preferredSchedule?: string;
+  preferredStartDate?: string;
+  participantCount?: number;
+  
+  // Inquiries & Notes from applicant
+  message?: string;
+  questions?: string;
+  specialRequirements?: string;
+  
+  // Admin Quote Fulfillment
+  status: QuoteRequestStatus;
+  assignedStaff?: string;
+  
+  // Quoted pricing details
+  currency: 'NGN' | 'USD';
+  baseFee?: number;
+  additionalFees?: number;
+  additionalFeesBreakdown?: QuoteBreakdownItem[];
+  discountAmount?: number;
+  discountReason?: string;
+  finalQuotedAmount?: number;
+  
+  // Quote Terms
+  quoteSentAt?: string;
+  quoteValidUntil?: string;
+  adminNotes?: string;
+  quoteMessageToApplicant?: string;
+  
+  // Conversion details
+  convertedApplicationId?: string;
+  convertedInvoiceId?: string;
+  convertedStudentId?: string;
+}
+
+export interface PriceVersionLog {
+  id: string;
+  itemId: string;
+  itemTitle: string;
+  itemType: 'program' | 'short_course' | 'online_course' | 'application_fee';
+  currency: 'NGN' | 'USD';
+  previousPrice: number;
+  newPrice: number;
+  changedBy: string;
+  changedAt: string;
+  reason?: string;
 }
 
 export type ProgramType = 'certificate' | 'diploma';

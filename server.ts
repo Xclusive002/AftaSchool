@@ -90,6 +90,450 @@ async function startServer() {
     res.json({ success: true, announcements: state.announcements.filter(a => a.active) });
   });
 
+  // =========================================================================
+  // 2B. GET CURRENT FEE / QUOTE REQUEST SYSTEM
+  // =========================================================================
+  app.post('/api/public/quote-requests', (req, res) => {
+    try {
+      const payload = req.body;
+      const state = db.getState();
+      const referenceNumber = db.generateNextQuoteRequestId();
+      const now = new Date().toISOString();
+
+      const newQuote = {
+        id: `qr-${Date.now()}`,
+        referenceNumber,
+        createdAt: now,
+        updatedAt: now,
+        fullName: payload.fullName || 'Prospective Student',
+        email: payload.email,
+        phone: payload.phone,
+        whatsapp: payload.whatsapp || payload.phone,
+        country: payload.country || 'Nigeria',
+        city: payload.city || '',
+        studentType: payload.studentType || (payload.country === 'Nigeria' || !payload.country ? 'nigerian_local' : 'international_online'),
+        courseId: payload.courseId,
+        courseTitle: payload.courseTitle || 'AITI Technology Training',
+        courseCode: payload.courseCode,
+        programId: payload.programId,
+        programTitle: payload.programTitle,
+        trainingType: payload.trainingType || 'short_course',
+        deliveryMode: payload.deliveryMode || 'physical_campus',
+        preferredSchedule: payload.preferredSchedule,
+        preferredStartDate: payload.preferredStartDate,
+        participantCount: Number(payload.participantCount) || 1,
+        message: payload.message || '',
+        questions: payload.questions || '',
+        specialRequirements: payload.specialRequirements || '',
+        status: 'new' as const,
+        assignedStaff: 'Admissions Office',
+        currency: (payload.currency || (payload.studentType === 'international_online' || (payload.country && payload.country !== 'Nigeria') ? 'USD' : 'NGN')) as 'NGN' | 'USD'
+      };
+
+      if (!state.quoteRequests) {
+        state.quoteRequests = [];
+      }
+      state.quoteRequests.unshift(newQuote);
+
+      // Create CRM lead automatically
+      const lead = {
+        id: `lead-${Date.now()}`,
+        fullName: newQuote.fullName,
+        email: newQuote.email,
+        phone: newQuote.phone,
+        whatsapp: newQuote.whatsapp,
+        programInterest: newQuote.courseTitle || newQuote.programTitle || 'Training Course',
+        source: 'website' as const,
+        status: 'contacted' as const,
+        notes: `Submitted Fee Quote Request ${referenceNumber} for ${newQuote.courseTitle} (${newQuote.deliveryMode})`,
+        createdAt: now
+      };
+      if (!state.leads) state.leads = [];
+      state.leads.unshift(lead);
+
+      db.save();
+      db.addAuditLog(
+        newQuote.fullName,
+        'student',
+        'QUOTE_REQUESTED',
+        'QuoteRequest',
+        referenceNumber,
+        `New fee quote request submitted for ${newQuote.courseTitle}`
+      );
+
+      res.json({
+        success: true,
+        referenceNumber,
+        quoteRequest: newQuote,
+        message: 'Your quote request has been received. AITI Admissions will provide your current applicable fee shortly.'
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Get all quote requests
+  app.get('/api/admin/quote-requests', (req, res) => {
+    try {
+      const state = db.getState();
+      const { status, search, studentType } = req.query;
+      let quotes = state.quoteRequests || [];
+
+      if (status && status !== 'all') {
+        quotes = quotes.filter(q => q.status === status);
+      }
+      if (studentType && studentType !== 'all') {
+        quotes = quotes.filter(q => q.studentType === studentType);
+      }
+      if (search) {
+        const s = String(search).toLowerCase();
+        quotes = quotes.filter(q => 
+          q.fullName.toLowerCase().includes(s) ||
+          q.referenceNumber.toLowerCase().includes(s) ||
+          q.email.toLowerCase().includes(s) ||
+          q.phone.includes(s) ||
+          q.courseTitle?.toLowerCase().includes(s)
+        );
+      }
+
+      res.json({ success: true, quoteRequests: quotes });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Get single quote request
+  app.get('/api/admin/quote-requests/:id', (req, res) => {
+    try {
+      const state = db.getState();
+      const quote = (state.quoteRequests || []).find(q => q.id === req.params.id || q.referenceNumber === req.params.id);
+      if (!quote) {
+        return res.status(404).json({ success: false, error: 'Quote request not found' });
+      }
+      res.json({ success: true, quoteRequest: quote });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Update quote request (e.g. status, assigned staff, notes)
+  app.put('/api/admin/quote-requests/:id', (req, res) => {
+    try {
+      const state = db.getState();
+      const idx = (state.quoteRequests || []).findIndex(q => q.id === req.params.id || q.referenceNumber === req.params.id);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Quote request not found' });
+      }
+
+      const updates = req.body;
+      const updatedQuote = {
+        ...state.quoteRequests[idx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+
+      state.quoteRequests[idx] = updatedQuote;
+      db.save();
+
+      db.addAuditLog(
+        updates.adminName || 'Admissions Officer',
+        'admin',
+        'QUOTE_UPDATED',
+        'QuoteRequest',
+        updatedQuote.referenceNumber,
+        `Quote request ${updatedQuote.referenceNumber} status updated to ${updatedQuote.status}`
+      );
+
+      res.json({ success: true, quoteRequest: updatedQuote, message: 'Quote updated successfully' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Send Official Quote (Current Fee + Expiry + Message)
+  app.post('/api/admin/quote-requests/:id/send-quote', (req, res) => {
+    try {
+      const state = db.getState();
+      const idx = (state.quoteRequests || []).findIndex(q => q.id === req.params.id || q.referenceNumber === req.params.id);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Quote request not found' });
+      }
+
+      const quote = state.quoteRequests[idx];
+      const {
+        baseFee,
+        currency,
+        additionalFees,
+        additionalFeesBreakdown,
+        discountAmount,
+        discountReason,
+        finalQuotedAmount,
+        quoteValidUntil,
+        quoteMessageToApplicant,
+        adminNotes,
+        assignedStaff,
+        adminName
+      } = req.body;
+
+      const now = new Date().toISOString();
+      const calculatedFinal = finalQuotedAmount !== undefined 
+        ? Number(finalQuotedAmount) 
+        : Math.max(0, (Number(baseFee) || 0) + (Number(additionalFees) || 0) - (Number(discountAmount) || 0));
+
+      const updatedQuote = {
+        ...quote,
+        baseFee: Number(baseFee) || 0,
+        currency: currency || quote.currency || 'NGN',
+        additionalFees: Number(additionalFees) || 0,
+        additionalFeesBreakdown: additionalFeesBreakdown || [],
+        discountAmount: Number(discountAmount) || 0,
+        discountReason: discountReason || '',
+        finalQuotedAmount: calculatedFinal,
+        quoteValidUntil: quoteValidUntil || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        quoteMessageToApplicant: quoteMessageToApplicant || `Official current fee offer for ${quote.courseTitle}: ${currency || 'NGN'} ${calculatedFinal.toLocaleString()}`,
+        adminNotes: adminNotes || quote.adminNotes,
+        assignedStaff: assignedStaff || quote.assignedStaff || 'Admissions Office',
+        status: 'quote_sent' as const,
+        quoteSentAt: now,
+        updatedAt: now
+      };
+
+      state.quoteRequests[idx] = updatedQuote;
+      db.save();
+
+      db.addAuditLog(
+        adminName || 'Admissions Officer',
+        'admin',
+        'QUOTE_SENT',
+        'QuoteRequest',
+        quote.referenceNumber,
+        `Official fee quote of ${updatedQuote.currency} ${calculatedFinal.toLocaleString()} sent to ${quote.fullName}`
+      );
+
+      res.json({
+        success: true,
+        quoteRequest: updatedQuote,
+        message: `Official quote ${quote.referenceNumber} generated and marked as sent.`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Convert Accepted Quote to Registered Application
+  app.post('/api/admin/quote-requests/:id/convert-application', (req, res) => {
+    try {
+      const state = db.getState();
+      const idx = (state.quoteRequests || []).findIndex(q => q.id === req.params.id || q.referenceNumber === req.params.id);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Quote request not found' });
+      }
+
+      const quote = state.quoteRequests[idx];
+      const nextAppId = db.generateNextApplicationId();
+      const now = new Date().toISOString();
+
+      // Split name
+      const nameParts = (quote.fullName || '').trim().split(' ');
+      const firstName = nameParts[0] || 'Applicant';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Student';
+
+      const newApp = {
+        id: `app-from-quote-${Date.now()}`,
+        applicationId: nextAppId,
+        firstName,
+        lastName,
+        email: quote.email,
+        phone: quote.phone,
+        whatsapp: quote.whatsapp || quote.phone,
+        dateOfBirth: '2000-01-01',
+        gender: 'male',
+        stateOfOrigin: quote.city || 'Kwara State',
+        lga: 'Ilorin South',
+        residentialAddress: quote.city ? `${quote.city}, ${quote.country}` : 'Ilorin, Kwara State',
+        highestQualification: 'Senior Secondary Certificate (SSCE / WAEC / NECO)',
+        previousInstitution: 'N/A',
+        yearOfGraduation: '2024',
+        priorCodingExperience: 'Beginner (No prior experience)',
+        programId: quote.programId || 'prog-cert-3m',
+        programTitle: quote.courseTitle || quote.programTitle || 'AITI Technology Program',
+        programType: (quote.trainingType === 'diploma_program' ? 'diploma' : 'certificate') as 'certificate' | 'diploma',
+        preferredSchedule: quote.preferredSchedule || 'Weekday Morning (9:00 AM - 12:00 PM)',
+        nextOfKinName: 'Guardian Contact',
+        nextOfKinRelationship: 'Parent / Sponsor',
+        nextOfKinPhone: quote.phone,
+        nextOfKinAddress: quote.city || 'Ilorin',
+        status: 'submitted' as const,
+        paymentStatus: 'pending' as const,
+        paymentAmount: quote.finalQuotedAmount || quote.baseFee || state.settings.admissions.applicationFee || 5000,
+        quotedFeeSnapshot: {
+          referenceNumber: quote.referenceNumber,
+          amount: quote.finalQuotedAmount || quote.baseFee || 0,
+          currency: quote.currency || 'NGN',
+          quotedAt: quote.quoteSentAt || now
+        },
+        termsAccepted: true,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      if (!state.applications) state.applications = [];
+      state.applications.unshift(newApp as any);
+
+      // Update quote state
+      state.quoteRequests[idx] = {
+        ...quote,
+        status: 'converted_to_application',
+        convertedApplicationId: nextAppId,
+        updatedAt: now
+      };
+
+      db.save();
+
+      db.addAuditLog(
+        req.body.adminName || 'Admissions Officer',
+        'admin',
+        'QUOTE_CONVERTED_APPLICATION',
+        'QuoteRequest',
+        quote.referenceNumber,
+        `Quote ${quote.referenceNumber} converted to Application ${nextAppId}`
+      );
+
+      res.json({
+        success: true,
+        application: newApp,
+        quoteRequest: state.quoteRequests[idx],
+        message: `Quote successfully converted to Application ${nextAppId}`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin: Generate Locked Fee Invoice from Quote
+  app.post('/api/admin/quote-requests/:id/generate-invoice', (req, res) => {
+    try {
+      const state = db.getState();
+      const idx = (state.quoteRequests || []).findIndex(q => q.id === req.params.id || q.referenceNumber === req.params.id);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Quote request not found' });
+      }
+
+      const quote = state.quoteRequests[idx];
+      const count = (state.invoices?.length || 0) + 1;
+      const invoiceNumber = `AITI/INV/2026/${count.toString().padStart(5, '0')}`;
+      const now = new Date().toISOString();
+      const amount = quote.finalQuotedAmount || quote.baseFee || 0;
+
+      const newInvoice = {
+        id: `inv-${Date.now()}`,
+        invoiceNumber,
+        studentId: quote.convertedStudentId || quote.convertedApplicationId || `prospect-${quote.referenceNumber}`,
+        studentName: quote.fullName,
+        studentEmail: quote.email,
+        title: `Tuition & Training Fee - ${quote.courseTitle}`,
+        amount,
+        balanceDue: amount,
+        dueDate: quote.quoteValidUntil || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        status: 'unpaid' as const,
+        description: `Official Quoted Fee (Ref: ${quote.referenceNumber}). Includes training tuition, lab workstation access, and verified certificate.`,
+        items: [
+          {
+            description: `Tuition for ${quote.courseTitle} (${quote.deliveryMode})`,
+            amount: quote.baseFee || amount
+          },
+          ...(quote.additionalFeesBreakdown || []).map(item => ({
+            description: item.description,
+            amount: item.amount
+          })),
+          ...(quote.discountAmount ? [{
+            description: `Discount Applied: ${quote.discountReason || 'Promotional Incentive'}`,
+            amount: -quote.discountAmount
+          }] : [])
+        ],
+        createdAt: now,
+        updatedAt: now
+      };
+
+      if (!state.invoices) state.invoices = [];
+      state.invoices.unshift(newInvoice as any);
+
+      state.quoteRequests[idx] = {
+        ...quote,
+        convertedInvoiceId: invoiceNumber,
+        updatedAt: now
+      };
+
+      db.save();
+
+      db.addAuditLog(
+        req.body.adminName || 'Finance Officer',
+        'finance',
+        'QUOTE_INVOICE_GENERATED',
+        'Invoice',
+        invoiceNumber,
+        `Generated Invoice ${invoiceNumber} for ${quote.currency} ${amount.toLocaleString()} linked to Quote ${quote.referenceNumber}`
+      );
+
+      res.json({
+        success: true,
+        invoice: newInvoice,
+        quoteRequest: state.quoteRequests[idx],
+        message: `Official Invoice ${invoiceNumber} generated for ${quote.fullName}`
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Price Versioning / Change History
+  app.get('/api/admin/price-history', (req, res) => {
+    try {
+      const state = db.getState();
+      res.json({ success: true, priceVersions: state.priceVersions || [] });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/price-history', (req, res) => {
+    try {
+      const state = db.getState();
+      const { itemId, itemTitle, itemType, currency, previousPrice, newPrice, changedBy, reason } = req.body;
+      const now = new Date().toISOString();
+
+      const log = {
+        id: `pv-${Date.now()}`,
+        itemId: itemId || `item-${Date.now()}`,
+        itemTitle: itemTitle || 'AITI Course',
+        itemType: itemType || 'short_course',
+        currency: currency || 'NGN',
+        previousPrice: Number(previousPrice) || 0,
+        newPrice: Number(newPrice) || 0,
+        changedBy: changedBy || 'Administrator',
+        changedAt: now,
+        reason: reason || 'Routine institutional fee schedule revision.'
+      };
+
+      if (!state.priceVersions) state.priceVersions = [];
+      state.priceVersions.unshift(log);
+
+      db.save();
+      db.addAuditLog(
+        log.changedBy,
+        'admin',
+        'PRICE_REVISED',
+        'Pricing',
+        log.itemId,
+        `Price revised for ${log.itemTitle} from ${log.currency} ${log.previousPrice.toLocaleString()} to ${log.currency} ${log.newPrice.toLocaleString()}`
+      );
+
+      res.json({ success: true, priceVersion: log, message: 'Price revision logged successfully' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // 3. Applications (Online Multi-Step Admission System)
   app.get('/api/applications', (req, res) => {
     try {
