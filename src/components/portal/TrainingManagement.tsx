@@ -5,9 +5,9 @@ import {
   DollarSign, Calendar, Eye, ShieldCheck, ChevronRight, X, 
   Check, ArrowRight, Phone, Mail, FileText, Send, UserCheck,
   Receipt, Award, MessageSquare, Download, MapPin, Briefcase,
-  TrendingUp, ExternalLink
+  TrendingUp, ExternalLink, Globe, Cpu, CheckSquare, ListPlus
 } from 'lucide-react';
-import { ShortCourse, ShortCourseCategory, CorporateTrainingRequest, ShortCourseEnrollment } from '../../types';
+import { ShortCourse, ShortCourseCategory, CorporateTrainingRequest, ShortCourseEnrollment, ShortCourseModuleItem, ShortCourseCompletionRule } from '../../types';
 import { DocumentViewerModal } from '../common/DocumentViewer';
 
 export const TrainingManagement: React.FC = () => {
@@ -27,28 +27,45 @@ export const TrainingManagement: React.FC = () => {
   // Modals
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<ShortCourse | null>(null);
+  const [courseModalTab, setCourseModalTab] = useState<'overview' | 'pricing' | 'modules' | 'rules' | 'instructor'>('overview');
   const [courseFormData, setCourseFormData] = useState<Partial<ShortCourse>>({
     title: '',
     code: '',
     categoryId: '',
     categoryName: '',
     description: '',
-    durationWeeks: 2,
-    durationHours: 20,
-    feeGHS: 450,
-    deliveryMode: 'physical',
-    location: 'AITI Campus, Sunyani',
-    instructorName: 'AITI Certified Faculty',
-    instructorTitle: 'Senior Instructor',
-    prerequisites: 'Basic computer literacy.',
-    targetAudience: 'Students and working professionals.',
-    upcomingBatches: ['May 5, 2026', 'June 2, 2026'],
+    durationWeeks: 8,
+    durationHours: 64,
+    feeNGN: 70000,
+    feeGHS: 70000,
+    internationalOnlineFee: 100,
+    deliveryMode: 'hybrid',
+    deliveryModes: ['Physical (Weekday)', 'Physical (Weekend)', 'Online (Live Evening)', 'Online (Self-Paced)'],
+    location: 'AITI Campus, Tanke, Ilorin, Nigeria / Online',
+    instructorName: 'AITI Certified Faculty Lead',
+    instructorTitle: 'Senior Technical Instructor',
+    instructorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    prerequisites: 'Basic computer literacy and enthusiasm to build practical technical skills.',
+    targetAudience: 'Students, graduates, working professionals, career switchers, and entrepreneurs.',
+    whoCanEnroll: ['Beginners with no prior experience', 'Working professionals looking to upskill', 'Students & Graduates'],
+    toolsCovered: [],
+    finalProject: 'Industry-Standard Capstone Project Portfolio',
+    upcomingBatches: ['Next Cohort Starts 1st of Next Month', 'Weekend Immersion Batch'],
     active: true,
     featured: false,
-    syllabus: [
-      { week: 1, title: 'Foundations & Core Principles', topics: ['Introduction & Environment Setup', 'Basic Operations'] },
-      { week: 2, title: 'Advanced Practice & Real Projects', topics: ['Hands-on lab project', 'Final Assessment & Portfolio Review'] }
-    ]
+    modules: [],
+    completionRules: {
+      minAttendancePercent: 80,
+      minAssignmentScorePercent: 65,
+      finalProjectRequired: true,
+      passGradePercent: 60
+    },
+    certificateDetails: {
+      type: 'Certificate of Completion',
+      issuingAuthority: 'AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE (AITI)',
+      format: 'Digital Verifiable Certificate with QR Code + Hardcopy at Graduation',
+      verifiability: 'Globally Verifiable at verify.aiti.edu.ng'
+    }
   });
 
   // Corporate Request Detail Modal
@@ -139,9 +156,42 @@ export const TrainingManagement: React.FC = () => {
 
   // --- Course Operations ---
   const handleOpenCourseModal = (course?: ShortCourse) => {
+    setCourseModalTab('overview');
     if (course) {
       setEditingCourse(course);
-      setCourseFormData(course);
+      setCourseFormData({
+        ...course,
+        feeNGN: course.feeNGN !== undefined ? course.feeNGN : (course.feeGHS || 70000),
+        internationalOnlineFee: course.internationalOnlineFee || 100,
+        durationWeeks: course.durationWeeks || 8,
+        durationHours: course.durationHours || 64,
+        deliveryModes: course.deliveryModes || ['Physical (Weekday)', 'Physical (Weekend)', 'Online (Live Evening)', 'Online (Self-Paced)'],
+        whoCanEnroll: course.whoCanEnroll || ['Beginners with no prior experience', 'Working professionals upskilling', 'Students & Graduates'],
+        toolsCovered: course.toolsCovered || [],
+        finalProject: course.finalProject || 'Comprehensive Capstone Portfolio Project',
+        modules: course.modules && course.modules.length > 0 ? course.modules : (
+          course.syllabus ? course.syllabus.map((s, idx) => ({
+            id: `mod-${idx + 1}`,
+            moduleNumber: s.week || idx + 1,
+            title: s.title,
+            topics: s.topics || [],
+            duration: 'Week ' + (s.week || idx + 1),
+            practicalAssignment: 'Hands-on practical exercise and project work'
+          })) : []
+        ),
+        completionRules: course.completionRules || {
+          minAttendancePercent: 80,
+          minAssignmentScorePercent: 65,
+          finalProjectRequired: true,
+          passGradePercent: 60
+        },
+        certificateDetails: course.certificateDetails || {
+          type: 'Certificate of Completion',
+          issuingAuthority: 'AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE (AITI)',
+          format: 'Digital Verifiable Certificate with QR Code + Hardcopy at Graduation',
+          verifiability: 'Globally Verifiable at verify.aiti.edu.ng'
+        }
+      });
     } else {
       setEditingCourse(null);
       const defaultCat = categories[0];
@@ -151,25 +201,103 @@ export const TrainingManagement: React.FC = () => {
         categoryId: defaultCat?.id || 'scc-1',
         categoryName: defaultCat?.name || 'ICT & Computer Fundamentals',
         description: '',
-        durationWeeks: 2,
-        durationHours: 20,
-        feeGHS: 500,
-        deliveryMode: 'physical',
-        location: 'AITI Campus, Sunyani',
-        instructorName: 'AITI Certified Faculty',
-        instructorTitle: 'Senior Instructor',
-        prerequisites: 'Basic computer literacy.',
-        targetAudience: 'Students, analysts, and working professionals.',
-        upcomingBatches: ['May 5, 2026', 'June 2, 2026'],
+        durationWeeks: 8,
+        durationHours: 64,
+        feeNGN: 70000,
+        feeGHS: 70000,
+        internationalOnlineFee: 100,
+        deliveryMode: 'hybrid',
+        deliveryModes: ['Physical (Weekday)', 'Physical (Weekend)', 'Online (Live Evening)', 'Online (Self-Paced)'],
+        location: 'AITI Campus, Tanke, Ilorin, Nigeria / Online',
+        instructorName: 'AITI Certified Faculty Lead',
+        instructorTitle: 'Senior Technical Instructor',
+        instructorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        prerequisites: 'Basic computer literacy and enthusiasm to learn.',
+        targetAudience: 'Students, graduates, working professionals, and entrepreneurs.',
+        whoCanEnroll: ['Beginners with no prior experience', 'Working professionals upskilling', 'Students & Graduates'],
+        toolsCovered: [],
+        finalProject: 'Comprehensive Capstone Portfolio Project',
+        upcomingBatches: ['Next Cohort Starts 1st of Next Month', 'Weekend Immersion Batch'],
         active: true,
         featured: false,
-        syllabus: [
-          { week: 1, title: 'Introduction & Core Tools', topics: ['System setup', 'Fundamentals and principles'] },
-          { week: 2, title: 'Practical Project & Execution', topics: ['Real-world lab', 'Final capstone submission'] }
-        ]
+        modules: [
+          {
+            id: 'mod-1',
+            moduleNumber: 1,
+            title: 'Foundations & Architecture',
+            topics: ['Core concepts', 'Environment setup', 'Essential workflows'],
+            duration: 'Week 1-2',
+            practicalAssignment: 'Initial Setup & Lab Exercise 1'
+          },
+          {
+            id: 'mod-2',
+            moduleNumber: 2,
+            title: 'Intermediate Implementation & Tools',
+            topics: ['Tool mastery', 'Applied best practices', 'Intermediate projects'],
+            duration: 'Week 3-4',
+            practicalAssignment: 'Intermediate Lab Build'
+          },
+          {
+            id: 'mod-3',
+            moduleNumber: 3,
+            title: 'Advanced Operations & Real Scenarios',
+            topics: ['Advanced features', 'Troubleshooting & optimization', 'Integration'],
+            duration: 'Week 5-6',
+            practicalAssignment: 'Full Integration Project'
+          },
+          {
+            id: 'mod-4',
+            moduleNumber: 4,
+            title: 'Capstone Project & Certification Portfolio',
+            topics: ['Capstone design', 'Live deployment / presentation', 'Assessment'],
+            duration: 'Week 7-8',
+            practicalAssignment: 'Final Capstone Project Defense'
+          }
+        ],
+        completionRules: {
+          minAttendancePercent: 80,
+          minAssignmentScorePercent: 65,
+          finalProjectRequired: true,
+          passGradePercent: 60
+        },
+        certificateDetails: {
+          type: 'Certificate of Completion',
+          issuingAuthority: 'AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE (AITI)',
+          format: 'Digital Verifiable Certificate with QR Code + Hardcopy at Graduation',
+          verifiability: 'Globally Verifiable at verify.aiti.edu.ng'
+        }
       });
     }
     setIsCourseModalOpen(true);
+  };
+
+  const handleAddModule = () => {
+    const nextNum = (courseFormData.modules?.length || 0) + 1;
+    const newMod: ShortCourseModuleItem = {
+      id: `mod-${Date.now()}`,
+      moduleNumber: nextNum,
+      title: `Module ${nextNum}: New Topic Focus`,
+      duration: `Week ${nextNum}`,
+      topics: ['Topic Overview', 'Hands-on Practice'],
+      practicalAssignment: 'Module practical project submission'
+    };
+    setCourseFormData({
+      ...courseFormData,
+      modules: [...(courseFormData.modules || []), newMod]
+    });
+  };
+
+  const handleUpdateModule = (index: number, updated: Partial<ShortCourseModuleItem>) => {
+    const list = [...(courseFormData.modules || [])];
+    if (list[index]) {
+      list[index] = { ...list[index], ...updated };
+      setCourseFormData({ ...courseFormData, modules: list });
+    }
+  };
+
+  const handleRemoveModule = (index: number) => {
+    const list = [...(courseFormData.modules || [])].filter((_, i) => i !== index);
+    setCourseFormData({ ...courseFormData, modules: list });
   };
 
   const handleSaveCourse = async (e: React.FormEvent) => {
@@ -503,9 +631,9 @@ export const TrainingManagement: React.FC = () => {
                 <tr>
                   <th className="p-3.5">Course Info</th>
                   <th className="p-3.5">Category</th>
-                  <th className="p-3.5">Duration & Hours</th>
-                  <th className="p-3.5">Fee (GHS)</th>
-                  <th className="p-3.5">Delivery Mode</th>
+                  <th className="p-3.5">Duration & Modules</th>
+                  <th className="p-3.5">Tuition (Local & Int'l)</th>
+                  <th className="p-3.5">Delivery Modes</th>
                   <th className="p-3.5">Status</th>
                   <th className="p-3.5 text-right">Actions</th>
                 </tr>
@@ -519,33 +647,58 @@ export const TrainingManagement: React.FC = () => {
                           src={c.bannerImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=300&q=80'}
                           alt={c.title}
                           referrerPolicy="no-referrer"
-                          className="w-10 h-10 rounded-lg object-cover border border-slate-700"
+                          className="w-11 h-11 rounded-xl object-cover border border-slate-700 shadow-sm"
                         />
                         <div>
-                          <span className="font-bold text-white block">{c.title}</span>
-                          <span className="font-mono text-[10px] text-cyan-400">{c.code}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white block">{c.title}</span>
+                            {c.featured && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Featured
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="font-mono text-[10px] text-cyan-400 font-semibold">{c.code}</span>
+                            <span className="text-slate-500 text-[10px]">• {c.instructorName || 'AITI Faculty'}</span>
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded text-[11px] bg-slate-950 text-slate-300 border border-slate-800">
+                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-950 text-slate-300 border border-slate-800 inline-block">
                         {c.categoryName}
                       </span>
                     </td>
                     <td className="p-3.5">
-                      <span className="font-semibold text-slate-200">{c.durationWeeks} Weeks</span>
-                      <span className="text-slate-500 block text-[10px]">{c.durationHours} Total Hours</span>
+                      <div className="space-y-1">
+                        <span className="font-semibold text-slate-200 block">{c.durationWeeks || 8} Weeks ({c.durationHours || 64}h)</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-cyan-300 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded-full font-mono">
+                          <Layers className="w-2.5 h-2.5" />
+                          {(c.modules?.length || c.syllabus?.length || 0)} Modules
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-3.5 font-bold font-mono text-emerald-400">
-                      GHS {c.feeGHS.toLocaleString()}
+                    <td className="p-3.5 font-mono">
+                      <div className="space-y-0.5">
+                        <div className="text-emerald-400 font-bold text-[13px]">
+                          ₦{(c.feeNGN || c.feeGHS || 70000).toLocaleString()}
+                        </div>
+                        <div className="text-slate-400 text-[10px] flex items-center gap-1">
+                          <Globe className="w-2.5 h-2.5 text-sky-400" />
+                          <span>${c.internationalOnlineFee || 100} USD (Int'l)</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3.5">
-                      <span className="capitalize text-slate-300 text-[11px]">
-                        {c.deliveryMode}
-                      </span>
+                      <div className="flex flex-wrap gap-1 max-w-[160px]">
+                        <span className="capitalize text-slate-300 text-[10px] px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                          {c.deliveryMode || 'Hybrid'}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
                         c.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-500'
                       }`}>
                         {c.active ? 'Active' : 'Draft'}
@@ -556,7 +709,7 @@ export const TrainingManagement: React.FC = () => {
                         <button
                           id={`edit-course-${c.id}`}
                           onClick={() => handleOpenCourseModal(c)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition-colors"
+                          className="p-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-colors"
                           title="Edit Course"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -564,7 +717,7 @@ export const TrainingManagement: React.FC = () => {
                         <button
                           id={`delete-course-${c.id}`}
                           onClick={() => handleDeleteCourse(c.id, c.title)}
-                          className="p-1.5 bg-slate-800 hover:bg-rose-900/60 text-rose-400 rounded-lg transition-colors"
+                          className="p-2 bg-slate-800 hover:bg-rose-900/60 text-rose-400 rounded-xl transition-colors"
                           title="Delete Course"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -826,161 +979,610 @@ export const TrainingManagement: React.FC = () => {
 
       {/* CREATE/EDIT SHORT COURSE MODAL */}
       {isCourseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8">
-            <form onSubmit={handleSaveCourse} className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-xl font-bold text-white">
-                  {editingCourse ? 'Edit Short Course' : 'Create New Short-Term Course'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-cyan-400" />
+                  <span>{editingCourse ? `Edit: ${courseFormData.title || 'Course'}` : 'Create Master Short Course'}</span>
                 </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Configure curriculum modules, local ₦ & international $ pricing, delivery modes, and certification rules.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCourseModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Sub-Tabs */}
+            <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 gap-2 overflow-x-auto">
+              {[
+                { id: 'overview', label: '1. Overview & Audience' },
+                { id: 'pricing', label: '2. Fees & Schedules' },
+                { id: 'modules', label: `3. Curriculum Modules (${courseFormData.modules?.length || 0})` },
+                { id: 'rules', label: '4. Completion Rules' },
+                { id: 'instructor', label: '5. Instructor & Visibility' }
+              ].map((tab) => (
                 <button
+                  key={tab.id}
                   type="button"
-                  onClick={() => setIsCourseModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+                  onClick={() => setCourseModalTab(tab.id as any)}
+                  className={`py-3 px-3.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all flex items-center gap-1.5 ${
+                    courseModalTab === tab.id
+                      ? 'border-cyan-400 text-cyan-300'
+                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
                 >
-                  <X className="w-5 h-5" />
+                  <span>{tab.label}</span>
                 </button>
-              </div>
+              ))}
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Course Title *</label>
-                  <input
-                    id="modal-course-title"
-                    type="text"
-                    required
-                    value={courseFormData.title}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, title: e.target.value })}
-                    placeholder="e.g. Practical Machine Learning & Prompting"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Course Code *</label>
-                  <input
-                    id="modal-course-code"
-                    type="text"
-                    required
-                    value={courseFormData.code}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, code: e.target.value })}
-                    placeholder="AITI-SC-001"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
+            {/* Form Body */}
+            <form onSubmit={handleSaveCourse} className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* TAB 1: OVERVIEW */}
+              {courseModalTab === 'overview' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Course Title *</label>
+                      <input
+                        id="modal-course-title"
+                        type="text"
+                        required
+                        value={courseFormData.title}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, title: e.target.value })}
+                        placeholder="e.g. Data Analytics & Business Intelligence"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Course Code *</label>
+                      <input
+                        id="modal-course-code"
+                        type="text"
+                        required
+                        value={courseFormData.code}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, code: e.target.value })}
+                        placeholder="AITI-SC-001"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 font-bold text-cyan-400"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Category</label>
-                  <select
-                    id="modal-course-cat"
-                    value={courseFormData.categoryId}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, categoryId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Category</label>
+                      <select
+                        id="modal-course-cat"
+                        value={courseFormData.categoryId}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, categoryId: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Banner Image URL</label>
+                      <input
+                        type="url"
+                        value={courseFormData.bannerImage || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, bannerImage: e.target.value })}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-300 font-semibold mb-1">Comprehensive Course Description *</label>
+                    <textarea
+                      id="modal-course-desc"
+                      rows={3}
+                      required
+                      value={courseFormData.description}
+                      onChange={(e) => setCourseFormData({ ...courseFormData, description: e.target.value })}
+                      placeholder="Detailed overview describing the course scope, hands-on lab approach, and real-world utility..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Prerequisites</label>
+                      <input
+                        type="text"
+                        value={courseFormData.prerequisites || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, prerequisites: e.target.value })}
+                        placeholder="e.g. Basic computer literacy. No coding experience required."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Target Audience</label>
+                      <input
+                        type="text"
+                        value={courseFormData.targetAudience || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, targetAudience: e.target.value })}
+                        placeholder="e.g. Beginners, students, graduates, working professionals."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">
+                        Tools & Technologies Covered (comma separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={(courseFormData.toolsCovered || []).join(', ')}
+                        onChange={(e) => setCourseFormData({
+                          ...courseFormData,
+                          toolsCovered: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                        })}
+                        placeholder="e.g. Python, SQL, Power BI, Excel, Tableau"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Final Capstone Project</label>
+                      <input
+                        type="text"
+                        value={courseFormData.finalProject || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, finalProject: e.target.value })}
+                        placeholder="e.g. Production-grade full stack web application / End-to-end dashboard"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: FEES & SCHEDULES */}
+              {courseModalTab === 'pricing' && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                      <label className="block text-xs text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
+                        <span>Local Nigerian Naira Fee (₦) *</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-emerald-400">₦</span>
+                        <input
+                          id="modal-course-fee-ngn"
+                          type="number"
+                          required
+                          value={courseFormData.feeNGN !== undefined ? courseFormData.feeNGN : (courseFormData.feeGHS || 70000)}
+                          onChange={(e) => setCourseFormData({ 
+                            ...courseFormData, 
+                            feeNGN: Number(e.target.value),
+                            feeGHS: Number(e.target.value)
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3.5 py-2.5 text-xs text-slate-100 font-mono font-bold text-emerald-400 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block">Default initial tuition: ₦70,000</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-sky-400 font-bold mb-1 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>International Online Fee ($ USD) *</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-sky-400">$</span>
+                        <input
+                          id="modal-course-fee-usd"
+                          type="number"
+                          required
+                          value={courseFormData.internationalOnlineFee || 100}
+                          onChange={(e) => setCourseFormData({ ...courseFormData, internationalOnlineFee: Number(e.target.value) })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3.5 py-2.5 text-xs text-slate-100 font-mono font-bold text-sky-400 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block">Independent USD pricing for international enrollments</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Standard Duration (Weeks)</label>
+                      <input
+                        id="modal-course-weeks"
+                        type="number"
+                        min="1"
+                        max="24"
+                        value={courseFormData.durationWeeks || 8}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, durationWeeks: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-300 font-semibold mb-1">Total Practical Hours</label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="300"
+                        value={courseFormData.durationHours || 64}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, durationHours: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-300 font-semibold mb-2">Available Delivery Formats</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {[
+                        'Physical (Weekday Morning / Afternoon)',
+                        'Physical (Weekend Immersion)',
+                        'Online (Evening Live Facilitated)',
+                        'Online (Self-Paced / Flexible Access)'
+                      ].map((modeStr) => {
+                        const isChecked = (courseFormData.deliveryModes || []).includes(modeStr);
+                        return (
+                          <label key={modeStr} className="flex items-center gap-2 p-2.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const current = courseFormData.deliveryModes || [];
+                                const updated = e.target.checked
+                                  ? [...current, modeStr]
+                                  : current.filter(m => m !== modeStr);
+                                setCourseFormData({ ...courseFormData, deliveryModes: updated });
+                              }}
+                              className="rounded bg-slate-900 border-slate-700 text-cyan-500"
+                            />
+                            <span className="text-slate-200">{modeStr}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-300 font-semibold mb-1">Physical Location / Campus</label>
+                    <input
+                      type="text"
+                      value={courseFormData.location || 'AITI Campus, Tanke, Ilorin, Kwara State, Nigeria / Online'}
+                      onChange={(e) => setCourseFormData({ ...courseFormData, location: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: CURRICULUM MODULES */}
+              {courseModalTab === 'modules' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Course Syllabus & Weekly Modules</h4>
+                      <p className="text-[11px] text-slate-400">Structured modular curriculum with hands-on lab exercises and deliverables.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddModule}
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Module</span>
+                    </button>
+                  </div>
+
+                  {(!courseFormData.modules || courseFormData.modules.length === 0) ? (
+                    <div className="text-center py-8 bg-slate-950/40 border border-dashed border-slate-800 rounded-2xl space-y-2">
+                      <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+                      <p className="text-xs text-slate-400">No custom modules created yet.</p>
+                      <button
+                        type="button"
+                        onClick={handleAddModule}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl text-xs font-bold"
+                      >
+                        Create First Module
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {courseFormData.modules.map((mod, idx) => (
+                        <div key={mod.id || idx} className="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="px-2 py-1 rounded bg-cyan-950 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-800">
+                                Module {mod.moduleNumber || idx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={mod.title}
+                                onChange={(e) => handleUpdateModule(idx, { title: e.target.value })}
+                                placeholder="Module Title..."
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-bold focus:outline-none focus:border-cyan-500"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={mod.duration || `Week ${idx + 1}`}
+                                onChange={(e) => handleUpdateModule(idx, { duration: e.target.value })}
+                                placeholder="e.g. Week 1-2"
+                                className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-300 font-mono focus:outline-none focus:border-cyan-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveModule(idx)}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-400 transition-colors"
+                                title="Remove Module"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div>
+                              <label className="block text-[11px] text-slate-400 font-medium mb-1">
+                                Topics & Lessons (comma separated)
+                              </label>
+                              <input
+                                type="text"
+                                value={(mod.topics || []).join(', ')}
+                                onChange={(e) => handleUpdateModule(idx, {
+                                  topics: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                                })}
+                                placeholder="e.g. Python Syntax, Variables, Control Flow, Data Structures"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] text-slate-400 font-medium mb-1">
+                                Weekly Practical Lab / Assignment
+                              </label>
+                              <input
+                                type="text"
+                                value={mod.practicalAssignment || mod.assignment || ''}
+                                onChange={(e) => handleUpdateModule(idx, { practicalAssignment: e.target.value })}
+                                placeholder="e.g. Build an automated data scraper and save output to CSV"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: COMPLETION RULES */}
+              {courseModalTab === 'rules' && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-4">
+                    <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Certification Eligibility Requirements</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-1">Minimum Class Attendance Required (%)</label>
+                        <input
+                          type="number"
+                          min="50"
+                          max="100"
+                          value={courseFormData.completionRules?.minAttendancePercent || 80}
+                          onChange={(e) => setCourseFormData({
+                            ...courseFormData,
+                            completionRules: {
+                              ...courseFormData.completionRules,
+                              minAttendancePercent: Number(e.target.value),
+                              minAssignmentScorePercent: courseFormData.completionRules?.minAssignmentScorePercent || 65,
+                              finalProjectRequired: courseFormData.completionRules?.finalProjectRequired ?? true,
+                              passGradePercent: courseFormData.completionRules?.passGradePercent || 60
+                            }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-1">Minimum Lab / Assignment Score (%)</label>
+                        <input
+                          type="number"
+                          min="40"
+                          max="100"
+                          value={courseFormData.completionRules?.minAssignmentScorePercent || 65}
+                          onChange={(e) => setCourseFormData({
+                            ...courseFormData,
+                            completionRules: {
+                              ...courseFormData.completionRules,
+                              minAttendancePercent: courseFormData.completionRules?.minAttendancePercent || 80,
+                              minAssignmentScorePercent: Number(e.target.value),
+                              finalProjectRequired: courseFormData.completionRules?.finalProjectRequired ?? true,
+                              passGradePercent: courseFormData.completionRules?.passGradePercent || 60
+                            }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-1">Overall Course Pass Mark (%)</label>
+                        <input
+                          type="number"
+                          min="40"
+                          max="100"
+                          value={courseFormData.completionRules?.passGradePercent || 60}
+                          onChange={(e) => setCourseFormData({
+                            ...courseFormData,
+                            completionRules: {
+                              ...courseFormData.completionRules,
+                              minAttendancePercent: courseFormData.completionRules?.minAttendancePercent || 80,
+                              minAssignmentScorePercent: courseFormData.completionRules?.minAssignmentScorePercent || 65,
+                              finalProjectRequired: courseFormData.completionRules?.finalProjectRequired ?? true,
+                              passGradePercent: Number(e.target.value)
+                            }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div className="flex items-center pt-5">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={courseFormData.completionRules?.finalProjectRequired ?? true}
+                            onChange={(e) => setCourseFormData({
+                              ...courseFormData,
+                              completionRules: {
+                                ...courseFormData.completionRules,
+                                minAttendancePercent: courseFormData.completionRules?.minAttendancePercent || 80,
+                                minAssignmentScorePercent: courseFormData.completionRules?.minAssignmentScorePercent || 65,
+                                finalProjectRequired: e.target.checked,
+                                passGradePercent: courseFormData.completionRules?.passGradePercent || 60
+                              }
+                            })}
+                            className="rounded bg-slate-900 border-slate-700 text-cyan-500"
+                          />
+                          <span className="text-slate-200 font-semibold">Final Capstone Project Defense Required</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Official Certificate Nomenclature</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-1">Award Title</label>
+                        <input
+                          type="text"
+                          value={courseFormData.certificateDetails?.type || 'Certificate of Completion'}
+                          onChange={(e) => setCourseFormData({
+                            ...courseFormData,
+                            certificateDetails: {
+                              ...courseFormData.certificateDetails,
+                              type: e.target.value,
+                              issuingAuthority: courseFormData.certificateDetails?.issuingAuthority || 'AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE (AITI)',
+                              format: courseFormData.certificateDetails?.format || 'Digital Verifiable Certificate with QR Code + Hardcopy at Graduation',
+                              verifiability: courseFormData.certificateDetails?.verifiability || 'Globally Verifiable at verify.aiti.edu.ng'
+                            }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 font-medium mb-1">Issuing Authority</label>
+                        <input
+                          type="text"
+                          value={courseFormData.certificateDetails?.issuingAuthority || 'AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE (AITI)'}
+                          onChange={(e) => setCourseFormData({
+                            ...courseFormData,
+                            certificateDetails: {
+                              ...courseFormData.certificateDetails,
+                              type: courseFormData.certificateDetails?.type || 'Certificate of Completion',
+                              issuingAuthority: e.target.value,
+                              format: courseFormData.certificateDetails?.format || 'Digital Verifiable Certificate with QR Code + Hardcopy at Graduation',
+                              verifiability: courseFormData.certificateDetails?.verifiability || 'Globally Verifiable at verify.aiti.edu.ng'
+                            }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: INSTRUCTOR & VISIBILITY */}
+              {courseModalTab === 'instructor' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-300 font-medium mb-1">Lead Instructor Name</label>
+                      <input
+                        type="text"
+                        value={courseFormData.instructorName || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, instructorName: e.target.value })}
+                        placeholder="e.g. Engr. Oladimeji Adebayo"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-medium mb-1">Instructor Professional Title</label>
+                      <input
+                        type="text"
+                        value={courseFormData.instructorTitle || ''}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, instructorTitle: e.target.value })}
+                        placeholder="e.g. Principal Cloud & AI Solutions Architect"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs">
+                    <label className="block text-slate-300 font-medium mb-1">Instructor Photo URL</label>
+                    <input
+                      type="url"
+                      value={courseFormData.instructorAvatar || ''}
+                      onChange={(e) => setCourseFormData({ ...courseFormData, instructorAvatar: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-100 font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-4 bg-slate-950/60 rounded-2xl border border-slate-800 text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={courseFormData.active}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, active: e.target.checked })}
+                        className="rounded bg-slate-900 border-slate-700 text-cyan-500"
+                      />
+                      <span className="text-slate-200 font-bold">Published / Active for Student Enrollment</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={courseFormData.featured}
+                        onChange={(e) => setCourseFormData({ ...courseFormData, featured: e.target.checked })}
+                        className="rounded bg-slate-900 border-slate-700 text-cyan-500"
+                      />
+                      <span className="text-slate-200 font-bold">Featured on Home & Course Landing Pages</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                <div className="text-xs text-slate-500">
+                  {editingCourse ? 'Modifying existing course database entry' : 'New course will be saved to database'}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsCourseModalOpen(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
                   >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Duration (Weeks)</label>
-                  <input
-                    id="modal-course-weeks"
-                    type="number"
-                    min="1"
-                    max="8"
-                    value={courseFormData.durationWeeks}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, durationWeeks: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Fee (GHS) *</label>
-                  <input
-                    id="modal-course-fee"
-                    type="number"
-                    required
-                    value={courseFormData.feeGHS}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, feeGHS: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-emerald-400 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div className="text-xs">
-                <label className="block text-slate-300 font-medium mb-1">Course Description *</label>
-                <textarea
-                  id="modal-course-desc"
-                  rows={3}
-                  required
-                  value={courseFormData.description}
-                  onChange={(e) => setCourseFormData({ ...courseFormData, description: e.target.value })}
-                  placeholder="Detailed summary of the course outcomes and methodology..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Instructor Name</label>
-                  <input
-                    type="text"
-                    value={courseFormData.instructorName}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, instructorName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Delivery Mode</label>
-                  <select
-                    value={courseFormData.deliveryMode}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, deliveryMode: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500"
+                    Cancel
+                  </button>
+                  <button
+                    id="save-short-course-btn"
+                    type="submit"
+                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-extrabold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5"
                   >
-                    <option value="physical">Physical Lab (On Campus)</option>
-                    <option value="online">Online Live</option>
-                    <option value="hybrid">Hybrid</option>
-                  </select>
+                    <Check className="w-4 h-4" />
+                    <span>Save Course Changes</span>
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-xs pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={courseFormData.active}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, active: e.target.checked })}
-                    className="rounded bg-slate-950 border-slate-700 text-cyan-500"
-                  />
-                  <span className="text-slate-300">Published / Active</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={courseFormData.featured}
-                    onChange={(e) => setCourseFormData({ ...courseFormData, featured: e.target.checked })}
-                    className="rounded bg-slate-950 border-slate-700 text-cyan-500"
-                  />
-                  <span className="text-slate-300">Featured Course</span>
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsCourseModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  id="save-short-course-btn"
-                  type="submit"
-                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-extrabold"
-                >
-                  Save Course
-                </button>
               </div>
             </form>
           </div>

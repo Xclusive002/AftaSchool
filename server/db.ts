@@ -72,12 +72,26 @@ class DatabaseService {
       if (fs.existsSync(DATA_FILE)) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+
+        // Merge short courses to ensure master professional courses are always loaded
+        const mergedShortCourses = [...initialShortCourses];
+        if (Array.isArray(parsed.shortCourses)) {
+          parsed.shortCourses.forEach((existing: ShortCourse) => {
+            const idx = mergedShortCourses.findIndex(c => c.id === existing.id);
+            if (idx >= 0) {
+              mergedShortCourses[idx] = { ...mergedShortCourses[idx], ...existing };
+            } else {
+              mergedShortCourses.push(existing);
+            }
+          });
+        }
+
         return {
           settings: parsed.settings || initialSettings,
           programs: parsed.programs || initialPrograms,
           courses: parsed.courses || initialCourses,
-          shortCourseCategories: parsed.shortCourseCategories || initialShortCourseCategories,
-          shortCourses: parsed.shortCourses || initialShortCourses,
+          shortCourseCategories: parsed.shortCourseCategories?.length ? parsed.shortCourseCategories : initialShortCourseCategories,
+          shortCourses: mergedShortCourses,
           corporateRequests: parsed.corporateRequests || initialCorporateRequests,
           corporateQuotations: parsed.corporateQuotations || initialCorporateQuotations,
           corporateInvoices: parsed.corporateInvoices || initialCorporateInvoices,

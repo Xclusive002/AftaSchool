@@ -343,6 +343,34 @@ export interface ShortCourseSyllabusWeek {
   topics: string[];
 }
 
+export interface ShortCourseModuleItem {
+  id?: string;
+  moduleNumber: number;
+  title: string;
+  duration?: string;
+  topics: string[];
+  tools?: string[];
+  description?: string;
+  practicalAssignment?: string;
+  assignment?: string;
+}
+
+export interface ShortCourseCompletionRule {
+  minAttendancePercent?: number;
+  requiredAssignmentsCount?: number;
+  minAssessmentScorePercent?: number;
+  minAssignmentScorePercent?: number;
+  finalProjectRequired?: boolean;
+  passGradePercent?: number;
+}
+
+export interface ShortCourseCertificateDetails {
+  type?: string;
+  issuingAuthority?: string;
+  format?: string;
+  verifiability?: string;
+}
+
 export interface ShortCourse {
   id: string;
   code: string;
@@ -352,16 +380,29 @@ export interface ShortCourse {
   categoryName?: string;
   category?: string;
   description: string;
-  duration?: ShortCourseDuration;
-  durationWeeks?: number;
+  duration?: ShortCourseDuration; // e.g. "2 Months"
+  durationWeeks?: number; // e.g. 8
   durationHours?: number;
   customDuration?: string;
-  fee?: number;
-  feeGHS?: number;
+  classesPerWeek?: string | number; // e.g. "3 Days Per Week" or 3
+  classDuration?: string; // e.g. "2 Hours Per Class"
+  fee?: number; // Nigerian local fee (default ₦70,000)
+  feeNGN?: number; // ₦70,000
+  feeGHS?: number; // for backward compat
   trainingFee?: number;
+  localPhysicalFee?: number; // ₦70,000
+  localOnlineFee?: number; // ₦70,000
+  internationalOnlineFee?: number; // USD (e.g. 120, 150, 160)
+  internationalOnlinePrice?: number;
+  localPhysicalPrice?: number;
+  localOnlinePrice?: number;
   applicationFee?: number;
   registrationFee?: number;
   deliveryMode?: 'physical' | 'online' | 'hybrid' | string;
+  deliveryModes?: string[];
+  trainingFormats?: string[];
+  onlineTrainingAvailable?: boolean;
+  onlineDeliveryType?: 'LIVE' | 'SELF-PACED' | 'HYBRID ONLINE' | string;
   mode?: string;
   location?: string;
   venue?: string;
@@ -373,10 +414,13 @@ export interface ShortCourse {
   instructorAvatar?: string;
   trainingMode?: ShortCourseTrainingMode;
   targetAudience?: string;
+  whoCanEnroll?: string[];
   prerequisites?: string;
   bannerImage?: string;
   upcomingBatches?: string[];
   courseOutline?: string[];
+  modules?: ShortCourseModuleItem[];
+  finalProject?: string;
   learningObjectives?: string[];
   learningOutcomes?: string[];
   toolsCovered?: string[];
@@ -388,14 +432,26 @@ export interface ShortCourse {
   maxParticipants?: number;
   certificate?: ShortCourseCertificateType;
   certificateType?: ShortCourseCertificateType;
+  certificateDetails?: ShortCourseCertificateDetails;
   certification?: string;
   status?: ShortCourseStatus;
-  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels' | string;
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Beginner/Intermediate' | 'All Levels' | string;
   featured?: boolean;
   active?: boolean;
   schedule?: string;
   scheduleDetails?: string;
   syllabus?: ShortCourseSyllabusWeek[];
+  completionRules?: ShortCourseCompletionRule;
+  accessDuration?: string; // "60 Days" or "Until Course Completion"
+  enrollmentDeadline?: string;
+  discounts?: {
+    earlyBirdPercent?: number;
+    studentPercent?: number;
+    siblingPercent?: number;
+    promotionalPercent?: number;
+    couponCode?: string;
+    groupDiscountPercent?: number;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
