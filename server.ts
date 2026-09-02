@@ -1,12 +1,22 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db } from './server/db';
 import { askVisitorAdmissionAi, askAdminAi } from './server/ai';
+import { initializeDatabaseSchema, initializeAdminUser, initializeLmsCatalog, isPostgresConfigured, queryDatabase, supabasePool } from './server/supabase';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  if (isPostgresConfigured) {
+    await initializeDatabaseSchema();
+    await initializeAdminUser();
+    await initializeLmsCatalog();
+    await db.initializeFromPostgres();
+    console.log('PostgreSQL schema is ready.');
+  }
 
   // JSON Body Parser with 20MB limit for document upload base64 strings
   app.use(express.json({ limit: '25mb' }));
@@ -25,8 +35,12 @@ async function startServer() {
   // ==========================================
 
   // 1. Institute Settings (ADMIN -> SETTINGS -> INSTITUTE INFORMATION)
-  app.get('/api/settings', (req, res) => {
+  app.get('/api/settings', async (req, res) => {
     try {
+      if (isPostgresConfigured) {
+        const rows = await queryDatabase<{ data: any }>('SELECT data FROM institute_settings WHERE section = $1', ['institute']);
+        return res.json({ success: true, settings: rows[0]?.data || null });
+      }
       const state = db.getState();
       res.json({ success: true, settings: state.settings });
     } catch (err: any) {
@@ -34,8 +48,16 @@ async function startServer() {
     }
   });
 
-  app.put('/api/settings', (req, res) => {
+  app.put('/api/settings', async (req, res) => {
     try {
+      if (isPostgresConfigured && supabasePool) {
+        const result = await supabasePool.query(
+          `INSERT INTO institute_settings (section, data, updated_at) VALUES ('institute', $1, NOW())
+           ON CONFLICT (section) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW() RETURNING data`,
+          [req.body]
+        );
+        return res.json({ success: true, settings: result.rows[0].data, message: 'Settings saved successfully.' });
+      }
       const updatedSettings = req.body;
       const state = db.getState();
       state.settings = { ...state.settings, ...updatedSettings };
@@ -90,6 +112,57 @@ async function startServer() {
     res.json({ success: true, announcements: state.announcements.filter(a => a.active) });
   });
 
+  app.get('/api/lms/courses', async (req, res) => {
+    try {
+      if (!isPostgresConfigured) return res.json({ success: true, courses: [] });
+      const courses = await queryDatabase<any>('SELECT data FROM lms_courses WHERE active = TRUE ORDER BY updated_at DESC');
+      res.json({ success: true, courses: courses.map(course => course.data) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/lms/enrollments/:studentId', async (req, res) => {
+    try {
+      if (!isPostgresConfigured) return res.json({ success: true, enrollments: [] });
+      const enrollments = await queryDatabase<any>('SELECT data FROM lms_enrollments WHERE student_id = $1 ORDER BY updated_at DESC', [req.params.studentId]);
+      res.json({ success: true, enrollments: enrollments.map(enrollment => enrollment.data) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/lms/messages', async (req, res) => {
+    try {
+      if (!isPostgresConfigured) return res.json({ success: true, messages: [] });
+      const { courseId, userId } = req.query;
+      const messages = await queryDatabase<any>(
+        `SELECT id, course_id AS "courseId", sender_id AS "senderId", recipient_id AS "recipientId", body, created_at AS "createdAt", read_at AS "readAt"
+         FROM lms_messages WHERE ($1::text IS NULL OR course_id = $1) AND ($2::text IS NULL OR sender_id = $2 OR recipient_id = $2) ORDER BY created_at ASC`,
+        [courseId || null, userId || null]
+      );
+      res.json({ success: true, messages });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/lms/messages', async (req, res) => {
+    try {
+      const { courseId, senderId, recipientId, body } = req.body || {};
+      if (!isPostgresConfigured) return res.status(503).json({ success: false, error: 'PostgreSQL is required for LMS messaging.' });
+      if (!senderId || !body?.trim()) return res.status(400).json({ success: false, error: 'Sender and message are required.' });
+      const result = await supabasePool!.query(
+        `INSERT INTO lms_messages (course_id, sender_id, recipient_id, body) VALUES ($1, $2, $3, $4)
+         RETURNING id, course_id AS "courseId", sender_id AS "senderId", recipient_id AS "recipientId", body, created_at AS "createdAt", read_at AS "readAt"`,
+        [courseId || null, senderId, recipientId || null, body.trim()]
+      );
+      res.json({ success: true, message: result.rows[0] });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // =========================================================================
   // 2B. GET CURRENT FEE / QUOTE REQUEST SYSTEM
   // =========================================================================
@@ -105,15 +178,15 @@ async function startServer() {
         referenceNumber,
         createdAt: now,
         updatedAt: now,
-        fullName: payload.fullName || 'Prospective Student',
+        fullName: payload.fullName,
         email: payload.email,
         phone: payload.phone,
-        whatsapp: payload.whatsapp || payload.phone,
-        country: payload.country || 'Nigeria',
+        whatsapp: payload.whatsapp || '',
+        country: payload.country,
         city: payload.city || '',
         studentType: payload.studentType || (payload.country === 'Nigeria' || !payload.country ? 'nigerian_local' : 'international_online'),
         courseId: payload.courseId,
-        courseTitle: payload.courseTitle || 'AITI Technology Training',
+        courseTitle: payload.courseTitle,
         courseCode: payload.courseCode,
         programId: payload.programId,
         programTitle: payload.programTitle,
@@ -863,6 +936,169 @@ async function startServer() {
       state.students[idx] = { ...state.students[idx], ...updates };
       db.save();
       res.json({ success: true, student: state.students[idx] });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/authenticate', async (req, res) => {
+    try {
+      if (!isPostgresConfigured || req.body?.pin !== process.env.ADMIN_ACCESS_PIN) {
+        return res.status(401).json({ success: false, error: 'Invalid administrator access PIN.' });
+      }
+      const users = await queryDatabase<any>(
+        `SELECT id, email, full_name AS "fullName", phone, whatsapp, role, department,
+                student_id AS "studentId", student_number AS "studentNumber",
+                admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId",
+                created_at AS "createdAt"
+         FROM users WHERE role IN ('super_admin', 'admin') ORDER BY created_at ASC LIMIT 1`
+      );
+      if (!users[0]) {
+        return res.status(404).json({ success: false, error: 'No administrator account exists in the database.' });
+      }
+      res.json({ success: true, user: users[0] });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/users', async (req, res) => {
+    try {
+      if (isPostgresConfigured) {
+        const users = await queryDatabase<any>(
+          `SELECT id, email, full_name AS "fullName", phone, whatsapp, role, department,
+                  student_id AS "studentId", student_number AS "studentNumber",
+                  admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId",
+                  created_at AS "createdAt"
+           FROM users ORDER BY created_at DESC`
+        );
+        return res.json({ success: true, users });
+      }
+      const state = db.getState();
+      const users = (state.users || []).map((user: any) => ({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone || '',
+        whatsapp: user.whatsapp || user.phone || '',
+        role: user.role,
+        department: user.department || 'General',
+        studentNumber: user.studentNumber || '',
+        admissionNumber: user.admissionNumber || '',
+        linkedStudentId: user.linkedStudentId || '',
+        createdAt: user.createdAt || new Date().toISOString()
+      }));
+      res.json({ success: true, users });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/users', async (req, res) => {
+    try {
+      const payload = req.body || {};
+      if (!payload.email || !payload.fullName || !payload.role) {
+        return res.status(400).json({ success: false, error: 'Email, full name, and role are required.' });
+      }
+      if (isPostgresConfigured && supabasePool) {
+        const id = payload.id || `usr-${Date.now()}`;
+        const result = await supabasePool.query(
+          `INSERT INTO users (id, email, full_name, phone, whatsapp, role, department, student_id, student_number, admission_number, linked_student_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           RETURNING id, email, full_name AS "fullName", phone, whatsapp, role, department,
+                     student_id AS "studentId", student_number AS "studentNumber",
+                     admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId", created_at AS "createdAt"`,
+          [id, payload.email, payload.fullName, payload.phone || null, payload.whatsapp || null, payload.role, payload.department || null,
+            payload.studentId || null, payload.studentNumber || null, payload.admissionNumber || null, payload.linkedStudentId || null]
+        );
+        return res.json({ success: true, user: result.rows[0] });
+      }
+      const state = db.getState();
+      const role = payload.role || 'student';
+      const newUser = {
+        id: payload.id || `usr-${Date.now()}`,
+        email: payload.email,
+        fullName: payload.fullName,
+        phone: payload.phone || '',
+        whatsapp: payload.whatsapp || payload.phone || '',
+        role,
+        department: payload.department || 'General Administration',
+        studentId: payload.studentId || undefined,
+        studentNumber: payload.studentNumber || undefined,
+        admissionNumber: payload.admissionNumber || undefined,
+        linkedStudentId: payload.linkedStudentId || undefined,
+        createdAt: new Date().toISOString()
+      };
+
+      state.users.unshift(newUser);
+
+      db.save();
+      db.addAuditLog(
+        newUser.fullName,
+        role,
+        'USER_CREATED',
+        'User',
+        newUser.id,
+        `Created ${role} profile for ${newUser.email}`
+      );
+      res.json({ success: true, user: newUser });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/admin/users/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body || {};
+      if (isPostgresConfigured && supabasePool) {
+        const result = await supabasePool.query(
+          `UPDATE users SET full_name = COALESCE($2, full_name), email = COALESCE($3, email),
+             phone = $4, whatsapp = $5, role = COALESCE($6, role), department = $7,
+             student_number = $8, admission_number = $9, linked_student_id = $10, updated_at = NOW()
+           WHERE id = $1
+           RETURNING id, email, full_name AS "fullName", phone, whatsapp, role, department,
+                     student_id AS "studentId", student_number AS "studentNumber",
+                     admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId", created_at AS "createdAt"`,
+          [id, updates.fullName, updates.email, updates.phone || null, updates.whatsapp || null, updates.role,
+            updates.department || null, updates.studentNumber || null, updates.admissionNumber || null, updates.linkedStudentId || null]
+        );
+        if (!result.rows[0]) return res.status(404).json({ success: false, message: 'User not found' });
+        return res.json({ success: true, user: result.rows[0] });
+      }
+      const state = db.getState();
+      const userIdx = state.users.findIndex(u => u.id === id || u.email === id);
+      if (userIdx === -1) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      state.users[userIdx] = { ...state.users[userIdx], ...updates };
+
+      if (state.users[userIdx].role === 'student') {
+        const studentIdx = state.students.findIndex(s => s.id === state.users[userIdx].studentId || s.email === state.users[userIdx].email || s.userId === state.users[userIdx].id);
+        if (studentIdx >= 0) {
+          state.students[studentIdx] = {
+            ...state.students[studentIdx],
+            fullName: state.users[userIdx].fullName,
+            email: state.users[userIdx].email,
+            phone: state.users[userIdx].phone,
+            whatsapp: state.users[userIdx].whatsapp || state.users[userIdx].phone,
+            studentNumber: state.users[userIdx].studentNumber || state.students[studentIdx].studentNumber,
+            admissionNumber: state.users[userIdx].admissionNumber || state.students[studentIdx].admissionNumber,
+          };
+        }
+      }
+
+      db.save();
+      db.addAuditLog(
+        state.users[userIdx].fullName,
+        state.users[userIdx].role,
+        'USER_UPDATED',
+        'User',
+        state.users[userIdx].id,
+        `Updated profile details for ${state.users[userIdx].email}`
+      );
+      res.json({ success: true, user: state.users[userIdx] });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -2504,13 +2740,27 @@ async function startServer() {
   });
 
   // 15. Audit Logs & Reports
-  app.get('/api/audit-logs', (req, res) => {
+  app.get('/api/audit-logs', async (req, res) => {
+    if (isPostgresConfigured) {
+      const auditLogs = await queryDatabase('SELECT id, user_id AS "userId", user_name AS "userName", user_role AS "userRole", action, entity_type AS "entityType", entity_id AS "entityId", details, timestamp FROM audit_logs ORDER BY timestamp DESC');
+      return res.json({ success: true, auditLogs });
+    }
     const state = db.getState();
     res.json({ success: true, auditLogs: state.auditLogs });
   });
 
-  app.get('/api/reports/summary', (req, res) => {
+  app.get('/api/reports/summary', async (req, res) => {
     try {
+      if (isPostgresConfigured) {
+        const [applicants, admitted, students, payments, outstanding] = await Promise.all([
+          queryDatabase<{ count: string }>('SELECT COUNT(*)::text AS count FROM applications'),
+          queryDatabase<{ count: string }>('SELECT COUNT(*)::text AS count FROM admissions'),
+          queryDatabase<{ active: string; graduated: string }>(`SELECT COUNT(*) FILTER (WHERE data->>'status' = 'active')::text AS active, COUNT(*) FILTER (WHERE data->>'status' = 'graduated')::text AS graduated FROM students`),
+          queryDatabase<{ total: string }>(`SELECT COALESCE(SUM((data->>'amount')::numeric), 0)::text AS total FROM payment_transactions WHERE data->>'status' = 'success'`),
+          queryDatabase<{ total: string }>(`SELECT COALESCE(SUM((data->>'outstandingBalance')::numeric), 0)::text AS total FROM students`)
+        ]);
+        return res.json({ success: true, summary: { totalApplicants: Number(applicants[0]?.count || 0), totalAdmitted: Number(admitted[0]?.count || 0), activeStudents: Number(students[0]?.active || 0), graduatedStudents: Number(students[0]?.graduated || 0), totalRevenue: Number(payments[0]?.total || 0), totalOutstanding: Number(outstanding[0]?.total || 0), avgAttendance: 0, certificateApplications: 0, diplomaApplications: 0 } });
+      }
       const state = db.getState();
       const totalApplicants = state.applications.length;
       const totalAdmitted = state.admissions.length;
@@ -2579,12 +2829,6 @@ async function startServer() {
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Content-Disposition', 'attachment; filename="aiti_supabase_schema.sql"');
     res.send(sql);
-  });
-
-  // 17. Reset Demo Data
-  app.post('/api/db/reset-demo', (req, res) => {
-    db.resetToDemo();
-    res.json({ success: true, message: 'Database reset to initial AITI demo state.' });
   });
 
   // ==========================================

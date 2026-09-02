@@ -1,0 +1,147 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(100) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  full_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(30),
+  whatsapp VARCHAR(30),
+  role VARCHAR(50) NOT NULL CHECK (role IN ('super_admin', 'admin', 'admissions_officer', 'finance_officer', 'instructor', 'student', 'parent')),
+  department VARCHAR(255),
+  student_id VARCHAR(100),
+  student_number VARCHAR(100),
+  admission_number VARCHAR(100),
+  linked_student_id VARCHAR(100),
+  auth_user_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS institute_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  section VARCHAR(50) NOT NULL UNIQUE,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admissions (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS students (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS payment_transactions (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id VARCHAR(100) PRIMARY KEY,
+  user_id VARCHAR(100),
+  user_name VARCHAR(255),
+  user_role VARCHAR(50),
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100),
+  entity_id VARCHAR(100),
+  details TEXT,
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS programs (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS courses (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS quote_requests (
+  id VARCHAR(100) PRIMARY KEY,
+  reference_number VARCHAR(100) NOT NULL UNIQUE,
+  data JSONB NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS price_versions (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS app_records (
+  collection VARCHAR(100) NOT NULL,
+  id VARCHAR(100) NOT NULL,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (collection, id)
+);
+
+CREATE TABLE IF NOT EXISTS lms_courses (
+  id VARCHAR(100) PRIMARY KEY,
+  data JSONB NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lms_enrollments (
+  id VARCHAR(100) PRIMARY KEY,
+  student_id VARCHAR(100) NOT NULL,
+  course_id VARCHAR(100) NOT NULL REFERENCES lms_courses(id),
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (student_id, course_id)
+);
+
+CREATE TABLE IF NOT EXISTS lms_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  course_id VARCHAR(100),
+  sender_id VARCHAR(100) NOT NULL,
+  recipient_id VARCHAR(100),
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  read_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS lms_messages_course_idx ON lms_messages(course_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS users_role_idx ON users(role);
+CREATE INDEX IF NOT EXISTS audit_logs_timestamp_idx ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS quote_requests_status_idx ON quote_requests(status);
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE institute_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quote_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE price_versions ENABLE ROW LEVEL SECURITY;

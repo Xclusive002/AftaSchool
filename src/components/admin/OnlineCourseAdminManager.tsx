@@ -4,14 +4,15 @@ import {
   Calendar, Video, FileText, HelpCircle, Users, Tag, ArrowRight, 
   ShieldCheck, Search, Filter, Save, Eye, X, Award
 } from 'lucide-react';
-import { INITIAL_ONLINE_COURSES, DetailedOnlineCourse, INITIAL_COUPONS } from '../../data/onlineCoursesSeed';
+import { DetailedOnlineCourse } from '../../data/onlineCoursesSeed';
 import { formatCurrency, SupportedCurrency } from '../../services/currency';
 import { Coupon } from '../../types';
+import { api } from '../../services/api';
 
 export const OnlineCourseAdminManager: React.FC = () => {
-  const [courses, setCourses] = useState<DetailedOnlineCourse[]>(INITIAL_ONLINE_COURSES);
-  const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
-  const [selectedCourse, setSelectedCourse] = useState<DetailedOnlineCourse | null>(INITIAL_ONLINE_COURSES[0]);
+  const [courses, setCourses] = useState<DetailedOnlineCourse[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<DetailedOnlineCourse | null>(null);
   const [adminTab, setAdminTab] = useState<'courses' | 'finance' | 'coupons' | 'submissions'>('courses');
 
   // New coupon modal state
@@ -24,35 +25,8 @@ export const OnlineCourseAdminManager: React.FC = () => {
     validUntil: '2026-12-31'
   });
 
-  // Mock Student Submissions
-  const [submissions, setSubmissions] = useState([
-    {
-      id: 'sub-1',
-      studentName: 'Adewale Johnson',
-      studentEmail: 'adewale@example.com',
-      studentLocation: 'Nigeria',
-      courseTitle: 'Front-End & Modern React Web Engineering',
-      assignmentTitle: 'Project Milestone 1: Responsive Portfolio Website',
-      submissionText: 'GitHub: https://github.com/adewale/aiti-portfolio | Live: https://adewale-dev.vercel.app',
-      submittedAt: '2026-09-02',
-      graded: false,
-      score: 0,
-      feedback: ''
-    },
-    {
-      id: 'sub-2',
-      studentName: 'Sarah Jenkins',
-      studentEmail: 's.jenkins@londontech.uk',
-      studentLocation: 'Outside Nigeria (United Kingdom)',
-      courseTitle: 'Data Analysis & Business Intelligence (Excel, SQL, PowerBI)',
-      assignmentTitle: 'Capstone Project: Retail Sales Performance Dashboard',
-      submissionText: 'PowerBI Dashboard File & Insights Doc uploaded.',
-      submittedAt: '2026-09-03',
-      graded: true,
-      score: 95,
-      feedback: 'Exceptional DAX measures and clean star schema modeling. Great work!'
-    }
-  ]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
 
   // Selected submission for grading modal
   const [gradingSubmission, setGradingSubmission] = useState<any | null>(null);
@@ -104,8 +78,16 @@ export const OnlineCourseAdminManager: React.FC = () => {
   };
 
   // Financial metrics calculation
-  const totalNgnRevenue = 1850000; // e.g. ₦1,850,000
-  const totalUsdRevenue = 4250;    // e.g. $4,250
+  React.useEffect(() => {
+    api.getLmsCourses().then(loadedCourses => {
+      setCourses(loadedCourses);
+      setSelectedCourse(loadedCourses[0] || null);
+    }).catch(console.error);
+    api.getPayments().then(setPayments).catch(console.error);
+  }, []);
+
+  const totalNgnRevenue = payments.filter(payment => payment.status === 'success' && payment.currency !== 'USD').reduce((total, payment) => total + Number(payment.amount || 0), 0);
+  const totalUsdRevenue = payments.filter(payment => payment.status === 'success' && payment.currency === 'USD').reduce((total, payment) => total + Number(payment.amount || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -219,7 +201,7 @@ export const OnlineCourseAdminManager: React.FC = () => {
                   <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Local Physical Tuition</span>
                     <span className="text-base font-black text-emerald-400">
-                      {formatCurrency(selectedCourse.localPhysicalPrice || 60000, 'NGN')}
+                      {selectedCourse.localPhysicalPrice != null ? formatCurrency(selectedCourse.localPhysicalPrice, 'NGN') : ''}
                     </span>
                     <span className="text-[10px] text-slate-500 block">Tanke Campus, Ilorin</span>
                   </div>
@@ -227,7 +209,7 @@ export const OnlineCourseAdminManager: React.FC = () => {
                   <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Local Online Tuition</span>
                     <span className="text-base font-black text-cyan-400">
-                      {formatCurrency(selectedCourse.localOnlinePrice || 40000, 'NGN')}
+                      {selectedCourse.localOnlinePrice != null ? formatCurrency(selectedCourse.localOnlinePrice, 'NGN') : ''}
                     </span>
                     <span className="text-[10px] text-slate-500 block">Nigeria Online Students</span>
                   </div>
@@ -235,7 +217,7 @@ export const OnlineCourseAdminManager: React.FC = () => {
                   <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">International Online Tuition</span>
                     <span className="text-base font-black text-indigo-400">
-                      {formatCurrency(selectedCourse.internationalOnlinePrice || 100, 'USD', { showCode: true })}
+                      {selectedCourse.internationalOnlinePrice != null ? formatCurrency(selectedCourse.internationalOnlinePrice, 'USD', { showCode: true }) : ''}
                     </span>
                     <span className="text-[10px] text-slate-500 block">Worldwide Remote</span>
                   </div>
@@ -302,7 +284,7 @@ export const OnlineCourseAdminManager: React.FC = () => {
               
               <div className="space-y-1">
                 <span className="text-3xl sm:text-4xl font-black text-white">
-                  ₦1,850,000
+                  {formatCurrency(totalNgnRevenue, 'NGN')}
                 </span>
                 <span className="text-xs text-slate-400 block">
                   Processed via Paystack &amp; Flutterwave (Verified)
@@ -312,11 +294,11 @@ export const OnlineCourseAdminManager: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800 text-xs">
                 <div>
                   <span className="text-slate-400 block">Total Local Students:</span>
-                  <strong className="text-white">48 Enrollments</strong>
+                  <strong className="text-white">{payments.filter(payment => payment.status === 'success' && payment.currency !== 'USD').length} Enrollments</strong>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Avg Course Price:</span>
-                  <strong className="text-emerald-400">₦38,500</strong>
+                  <strong className="text-emerald-400">{totalNgnRevenue ? formatCurrency(totalNgnRevenue / Math.max(1, payments.filter(payment => payment.status === 'success' && payment.currency !== 'USD').length), 'NGN') : ''}</strong>
                 </div>
               </div>
             </div>
@@ -332,7 +314,7 @@ export const OnlineCourseAdminManager: React.FC = () => {
               
               <div className="space-y-1">
                 <span className="text-3xl sm:text-4xl font-black text-white">
-                  $4,250 USD
+                  {formatCurrency(totalUsdRevenue, 'USD', { showCode: true })}
                 </span>
                 <span className="text-xs text-slate-400 block">
                   Processed via International Card Gateways
@@ -342,11 +324,11 @@ export const OnlineCourseAdminManager: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800 text-xs">
                 <div>
                   <span className="text-slate-400 block">International Students:</span>
-                  <strong className="text-white">44 Enrollments</strong>
+                  <strong className="text-white">{payments.filter(payment => payment.status === 'success' && payment.currency === 'USD').length} Enrollments</strong>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Top Countries:</span>
-                  <strong className="text-cyan-300">USA, UK, Ghana, Kenya</strong>
+                  <strong className="text-cyan-300">{payments.filter(payment => payment.status === 'success' && payment.currency === 'USD').length ? 'Recorded international payments' : ''}</strong>
                 </div>
               </div>
             </div>

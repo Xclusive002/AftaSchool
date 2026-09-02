@@ -1438,6 +1438,7 @@ export const initialQuoteRequests: QuoteRequest[] = [
     country: "Nigeria",
     city: "Ilorin",
     studentType: "nigerian_local",
+    courseTitle: "6-Month Professional Diploma Program",
     programId: "prog-dip-6m",
     programTitle: "6-Month Professional Diploma Program",
     trainingType: "diploma_program",

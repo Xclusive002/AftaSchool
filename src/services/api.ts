@@ -148,6 +148,46 @@ export const api = {
     return data.students || [];
   },
 
+  async getAdminUsers(): Promise<any[]> {
+    const res = await fetch('/api/admin/users');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch admin users');
+    return data.users || [];
+  },
+
+  async authenticateAdmin(pin: string): Promise<any> {
+    const res = await fetch('/api/admin/authenticate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Administrator authentication failed');
+    return data.user;
+  },
+
+  async createAdminUser(payload: Record<string, any>): Promise<any> {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to create admin user');
+    return data.user;
+  },
+
+  async updateAdminUser(id: string, updates: Record<string, any>): Promise<any> {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to update admin user');
+    return data.user;
+  },
+
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student> {
     const res = await fetch(`/api/students/${id}`, {
       method: 'PUT',
@@ -451,6 +491,37 @@ export const api = {
     return data.reply || "Intelligence query completed.";
   },
 
+  async getLmsCourses(): Promise<any[]> {
+    const res = await fetch('/api/lms/courses');
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch LMS courses');
+    return data.courses || [];
+  },
+
+  async getLmsEnrollments(studentId: string): Promise<any[]> {
+    const res = await fetch(`/api/lms/enrollments/${encodeURIComponent(studentId)}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch LMS enrollments');
+    return data.enrollments || [];
+  },
+
+  async getLmsMessages(courseId?: string, userId?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (courseId) params.set('courseId', courseId);
+    if (userId) params.set('userId', userId);
+    const res = await fetch(`/api/lms/messages?${params.toString()}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to fetch LMS messages');
+    return data.messages || [];
+  },
+
+  async sendLmsMessage(payload: { courseId?: string; senderId: string; recipientId?: string; body: string }): Promise<any> {
+    const res = await fetch('/api/lms/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to send LMS message');
+    return data.message;
+  },
+
   // Quote Requests & Current Fee System
   async submitQuoteRequest(payload: Partial<QuoteRequest>): Promise<{ success: boolean; referenceNumber: string; quoteRequest: QuoteRequest; message: string }> {
     const res = await fetch('/api/public/quote-requests', {
@@ -562,8 +633,4 @@ export const api = {
     return data.priceVersion;
   },
 
-  // Reset Demo
-  async resetDemo(): Promise<void> {
-    await fetch('/api/db/reset-demo', { method: 'POST' });
-  }
 };

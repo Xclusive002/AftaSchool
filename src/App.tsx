@@ -25,6 +25,7 @@ import { ParentPortal } from './components/portal/ParentPortal';
 
 import { WhatsAppWidget } from './components/common/WhatsAppWidget';
 import { AiAdmissionChatbot } from './components/common/AiAdmissionChatbot';
+import { AuthPanel } from './components/auth/AuthPanel';
 import { useAuth } from './context/AuthContext';
 import { useSettings } from './context/SettingsContext';
 
@@ -34,12 +35,33 @@ export const App: React.FC = () => {
   const { settings, loading } = useSettings();
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedProgramId, setSelectedProgramId] = useState<string | undefined>(undefined);
+  const [bootReady, setBootReady] = useState(false);
+
+  const portalViews = ['portal_admin', 'portal_online_lms', 'portal_admissions', 'portal_finance', 'portal_instructor', 'portal_student', 'portal_parent'];
+  const requiresAuth = portalViews.includes(currentView);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBootReady(true), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Check URL query on initial load (e.g. ?view=verify or ?code=...)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const viewParam = urlParams.get('view');
     const codeParam = urlParams.get('code');
+    const path = window.location.pathname;
+
+    if (path === '/admin' || path.startsWith('/admin/')) {
+      setCurrentView('portal_admin');
+      return;
+    }
+
+    if (path === '/lms' || path.startsWith('/lms/')) {
+      setCurrentView('portal_online_lms');
+      return;
+    }
+
     if (codeParam || viewParam === 'verify') {
       setCurrentView('verify');
     } else if (viewParam) {
@@ -50,6 +72,17 @@ export const App: React.FC = () => {
   const handleNavigate = (view: string, programId?: string) => {
     setCurrentView(view);
     if (programId) setSelectedProgramId(programId);
+
+    if (view === 'portal_admin') {
+      window.history.pushState({}, '', '/admin');
+    } else if (view === 'portal_online_lms') {
+      window.history.pushState({}, '', '/lms');
+    } else if (view === 'home') {
+      window.history.pushState({}, '', '/');
+    } else {
+      window.history.pushState({}, '', `/?view=${encodeURIComponent(view)}`);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -59,7 +92,7 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (loading) {
+  if (!bootReady || loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
         <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center animate-pulse mb-4">
@@ -69,6 +102,30 @@ export const App: React.FC = () => {
           AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE
         </div>
         <span className="text-xs text-cyan-400 font-mono mt-1">Booting Institutional Campus System...</span>
+      </div>
+    );
+  }
+
+  if (requiresAuth && !currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <Navbar currentView={currentView} onNavigate={handleNavigate} />
+        <main className="flex-1">
+          <AuthPanel redirectTo={currentView} adminOnly={currentView === 'portal_admin'} />
+        </main>
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  if (currentView === 'login') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <Navbar currentView={currentView} onNavigate={handleNavigate} />
+        <main className="flex-1">
+          <AuthPanel redirectTo="home" />
+        </main>
+        <Footer onNavigate={handleNavigate} />
       </div>
     );
   }

@@ -3,7 +3,8 @@ import {
   BarChart3, Users, DollarSign, GraduationCap, 
   Settings, Bot, Sparkles, Database, Download, 
   RefreshCw, CheckCircle2, ShieldCheck, FileText, 
-  Phone, Mail, MapPin, MessageCircle, Layers, BookOpen 
+  Phone, Mail, MapPin, MessageCircle, Layers, BookOpen,
+  UserCog, Plus, Search, PencilLine
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
@@ -18,7 +19,22 @@ export const AdminCommandCenter: React.FC = () => {
 
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'training' | 'online_manager' | 'ai_assistant' | 'settings' | 'export_sql' | 'audit_logs'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'users' | 'training' | 'online_manager' | 'ai_assistant' | 'settings' | 'export_sql' | 'audit_logs'>('metrics');
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userForm, setUserForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'student',
+    department: '',
+    studentNumber: '',
+    admissionNumber: '',
+    linkedStudentId: '',
+  });
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userSaving, setUserSaving] = useState(false);
 
   // AI Command Chat State
   const [aiQuery, setAiQuery] = useState('');
@@ -49,12 +65,27 @@ export const AdminCommandCenter: React.FC = () => {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const result = await api.getAdminUsers();
+      setUsers(result);
+    } catch (err) {
+      console.error('Failed to load users', err);
+    }
+  };
+
   useEffect(() => {
     loadData();
     if (settings) {
       setFormSettings(JSON.parse(JSON.stringify(settings)));
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [activeTab]);
 
   const handleAskAi = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,17 +115,54 @@ export const AdminCommandCenter: React.FC = () => {
     }
   };
 
-  const handleExportSql = () => {
-    window.open('/api/db/export-sql', '_blank');
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userForm.fullName.trim() || !userForm.email.trim()) return;
+
+    setUserSaving(true);
+    try {
+      if (editingUserId) {
+        await api.updateAdminUser(editingUserId, { ...userForm, updatedAt: new Date().toISOString() });
+      } else {
+        await api.createAdminUser(userForm);
+      }
+
+      setUserForm({
+        fullName: '',
+        email: '',
+        phone: '',
+        role: 'student',
+        department: '',
+        studentNumber: '',
+        admissionNumber: '',
+        linkedStudentId: '',
+      });
+      setEditingUserId(null);
+      await loadUsers();
+    } catch (err: any) {
+      alert(err.message || 'Unable to save user data.');
+    } finally {
+      setUserSaving(false);
+    }
   };
 
-  const handleResetDemo = async () => {
-    if (confirm('Are you sure you want to reset all data back to the demo institutional seed state?')) {
-      await api.resetDemo();
-      await refreshSettings();
-      await loadData();
-      alert('Demo data has been reset to initial state.');
-    }
+  const handleEditUser = (user: any) => {
+    setEditingUserId(user.id);
+    setUserForm({
+      fullName: user.fullName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role || 'student',
+      department: user.department || '',
+      studentNumber: user.studentNumber || '',
+      admissionNumber: user.admissionNumber || '',
+      linkedStudentId: user.linkedStudentId || '',
+    });
+    setActiveTab('users');
+  };
+
+  const handleExportSql = () => {
+    window.open('/api/db/export-sql', '_blank');
   };
 
   return (
@@ -124,12 +192,6 @@ export const AdminCommandCenter: React.FC = () => {
             title="Refresh Data"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={handleResetDemo}
-            className="px-3.5 py-2.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 text-xs font-bold rounded-xl transition-colors"
-          >
-            Reset Demo Data
           </button>
         </div>
       </div>
@@ -252,6 +314,137 @@ export const AdminCommandCenter: React.FC = () => {
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Graduated Students</span>
               <div className="text-2xl font-bold text-emerald-400 font-mono">{summary.graduatedStudents} Alumni</div>
               <p className="text-[11px] text-slate-400 mt-1">Issued official QR certificates</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 2. PEOPLE & ROLES DIRECTORY */}
+      {/* ========================================================= */}
+      {activeTab === 'users' && (
+        <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6 animate-in fade-in duration-200">
+          <form onSubmit={handleUserSubmit} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-violet-400 font-bold">People Management</div>
+                <h3 className="text-xl font-bold text-white font-serif mt-1">
+                  {editingUserId ? 'Edit Account' : 'Create User'}
+                </h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-violet-950/70 border border-violet-700/60 flex items-center justify-center text-violet-300">
+                <UserCog className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="sm:col-span-2">
+                <label className="text-slate-300 font-semibold block mb-1">Full Name</label>
+                <input value={userForm.fullName} onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="Full name" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-slate-300 font-semibold block mb-1">Email</label>
+                <input type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="email@institution.com" />
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Phone</label>
+                <input value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="080..." />
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Role</label>
+                <select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white">
+                  <option value="super_admin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="admissions_officer">Admissions Officer</option>
+                  <option value="finance_officer">Finance Officer</option>
+                  <option value="instructor">Instructor</option>
+                  <option value="student">Student</option>
+                  <option value="parent">Parent</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Department</label>
+                <input value={userForm.department} onChange={(e) => setUserForm({ ...userForm, department: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="Department" />
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Student Number</label>
+                <input value={userForm.studentNumber} onChange={(e) => setUserForm({ ...userForm, studentNumber: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="AITI/STU/..." />
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Admission Number</label>
+                <input value={userForm.admissionNumber} onChange={(e) => setUserForm({ ...userForm, admissionNumber: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="AITI/ADM/..." />
+              </div>
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Linked Student</label>
+                <input value={userForm.linkedStudentId} onChange={(e) => setUserForm({ ...userForm, linkedStudentId: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white" placeholder="student id" />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={userSaving} className="flex-1 bg-violet-500 hover:bg-violet-400 text-slate-950 font-black px-5 py-3 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                {userSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {userSaving ? 'Saving...' : editingUserId ? 'Update User' : 'Save User'}
+              </button>
+              {editingUserId && (
+                <button type="button" onClick={() => { setEditingUserId(null); setUserForm({ fullName: '', email: '', phone: '', role: 'student', department: '', studentNumber: '', admissionNumber: '', linkedStudentId: '' }); }} className="bg-slate-800 border border-slate-700 px-4 py-3 rounded-xl text-xs font-bold text-slate-200">
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Institution Directory</div>
+                <h3 className="text-xl font-bold text-white font-serif mt-1">All Users & Roles</h3>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-500" placeholder="Search people..." />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {['super_admin', 'admissions_officer', 'finance_officer', 'instructor', 'student', 'parent'].map((role) => {
+                const count = users.filter((u) => u.role === role).length;
+                return (
+                  <div key={role} className="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400">{role.replace('_', ' ')}</div>
+                    <div className="text-2xl font-extrabold text-white mt-1">{count}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2 max-h-[760px] overflow-y-auto pr-1">
+              {users.filter((user) => {
+                const value = userSearch.toLowerCase();
+                return !value || [user.fullName, user.email, user.role, user.department, user.studentNumber || '', user.admissionNumber || ''].join(' ').toLowerCase().includes(value);
+              }).map((user) => (
+                <div key={user.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/30 flex items-center justify-center text-sm font-black text-white uppercase">
+                      {user.fullName?.charAt(0) || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-white truncate">{user.fullName}</div>
+                      <div className="text-[11px] text-slate-400 truncate">{user.email}</div>
+                      <div className="text-[10px] text-cyan-400 uppercase tracking-wider mt-1">{user.role}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end gap-2 text-[11px] text-slate-300">
+                    <div>{user.department || 'General'}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">{user.phone || 'No phone'}</span>
+                      <button onClick={() => handleEditUser(user)} className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg font-semibold">
+                        <PencilLine className="w-3 h-3" /> Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

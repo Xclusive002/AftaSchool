@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, CheckCircle2, Clock, Calendar, 
   FileText, Award, Check, X, AlertCircle, 
-  RefreshCw, Plus, Send, Sparkles 
+  RefreshCw, Plus, Send, Sparkles, MessageSquare
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Student, AttendanceRecord, Assignment, AcademicResult } from '../../types';
@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export const InstructorPortal: React.FC = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'attendance' | 'assignments' | 'grading'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'assignments' | 'grading' | 'messages'>('attendance');
   
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('class_fs_01');
@@ -39,6 +39,10 @@ export const InstructorPortal: React.FC = () => {
   const [practicalScore, setPracticalScore] = useState<number>(19);
   const [examScore, setExamScore] = useState<number>(36);
   const [savingGrade, setSavingGrade] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [messageRecipientId, setMessageRecipientId] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const loadData = async () => {
     try {
@@ -70,6 +74,26 @@ export const InstructorPortal: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== 'messages') return;
+    api.getLmsMessages(undefined, currentUser.id).then(setMessages).catch(console.error);
+  }, [activeTab, currentUser.id]);
+
+  const handleSendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!messageText.trim()) return;
+    setSendingMessage(true);
+    try {
+      const message = await api.sendLmsMessage({ senderId: currentUser.id, recipientId: messageRecipientId || undefined, body: messageText });
+      setMessages(previous => [...previous, message]);
+      setMessageText('');
+    } catch (err: any) {
+      alert(`Message failed: ${err.message}`);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const handleSaveAttendance = async () => {
     setSavingAttendance(true);
     try {
@@ -88,7 +112,7 @@ export const InstructorPortal: React.FC = () => {
         classId: selectedClassId,
         records,
         date: attendanceDate,
-        recordedBy: currentUser.name || 'Instructor'
+        recordedBy: currentUser.fullName
       });
 
       setAttendanceSuccess(true);
@@ -111,7 +135,7 @@ export const InstructorPortal: React.FC = () => {
         description: newAssignDesc,
         dueDate: newAssignDeadline,
         maxScore: newAssignMaxScore,
-        instructorName: currentUser.name || 'Senior Instructor'
+        instructorName: currentUser.fullName
       });
       setShowCreateAssignModal(false);
       setNewAssignTitle('');
@@ -190,6 +214,7 @@ export const InstructorPortal: React.FC = () => {
           { id: 'attendance', label: 'Daily Attendance Register', icon: <Calendar className="w-4 h-4" /> },
           { id: 'assignments', label: 'Technical Assignments', icon: <FileText className="w-4 h-4" /> },
           { id: 'grading', label: 'Assessments & Gradebook', icon: <Award className="w-4 h-4" /> },
+          { id: 'messages', label: 'Student Messages', icon: <MessageSquare className="w-4 h-4" /> },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -205,6 +230,31 @@ export const InstructorPortal: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* ========================================================= */}
+      {/* 0. STUDENT MESSAGES */}
+      {/* ========================================================= */}
+      {activeTab === 'messages' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 animate-in fade-in duration-200">
+          <div className="space-y-3">
+            <h3 className="text-lg font-bold text-white">Student Messages</h3>
+            <p className="text-xs text-slate-400">Send course updates and answer student questions.</p>
+            <select value={messageRecipientId} onChange={event => setMessageRecipientId(event.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+              <option value="">All enrolled students</option>
+              {students.map(student => <option key={student.id} value={student.userId || student.id}>{student.fullName}</option>)}
+            </select>
+          </div>
+          <div className="space-y-4">
+            <div className="min-h-56 max-h-96 overflow-y-auto space-y-2 bg-slate-950 rounded-2xl border border-slate-800 p-4">
+              {messages.length === 0 ? <p className="text-xs text-slate-500 text-center py-12">No messages yet.</p> : messages.map(message => <div key={message.id} className="rounded-xl border border-slate-800 p-3 text-xs"><div className="text-[10px] text-cyan-400">{message.senderId === currentUser.id ? 'You' : 'Student'} · {new Date(message.createdAt).toLocaleString()}</div><p className="text-slate-200 mt-1">{message.body}</p></div>)}
+            </div>
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input value={messageText} onChange={event => setMessageText(event.target.value)} placeholder="Write a message to your students..." className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-xs text-white" />
+              <button type="submit" disabled={sendingMessage} className="bg-purple-600 hover:bg-purple-500 text-white px-4 rounded-xl text-xs font-bold"><Send className="w-4 h-4" /></button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* 1. ATTENDANCE REGISTER */}

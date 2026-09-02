@@ -12,6 +12,19 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
+const emptySettings: InstituteSettings = {
+  general: { instituteName: '', shortName: '', fullName: '', alternativeName: '', parentOrganization: '', tagline: '', motto: '', description: '', shortDescription: '', institutionType: '', logoUrl: '', faviconUrl: '' },
+  contact: { primaryPhone: '', secondaryPhone: '', additionalPhone: '', email: '', supportEmail: '', address: '', street: '', junction: '', area: '', city: '', state: '', country: '', googleMapsEmbedUrl: '', openingHours: '' },
+  whatsapp: { primaryNumber: '', secondaryNumber: '', defaultMessage: '', floatingEnabled: false },
+  branding: { primaryColor: '', secondaryColor: '', accentColor: '', showMottoOnHeader: false },
+  admissions: { activeSession: '', applicationStatus: 'closed', applicationFee: 0, certificateTuition: 0, diplomaTuition: 0, acceptanceFee: 0, applicationOpeningDate: '', applicationDeadline: '', orientationDate: '', programStartDate: '', certificateRequirements: [], diplomaRequirements: [] },
+  documents: { authorizedSignatoryName: '', authorizedSignatoryTitle: '', signatorySignatureUrl: '', officialStampUrl: '', admissionLetterHeader: '', certificateTitle: '' },
+  socialMedia: { facebook: '', instagram: '', tiktok: '', youtube: '', linkedin: '', twitterX: '' },
+  numbering: { applicationPrefix: '', admissionPrefix: '', studentPrefix: '', certificatePrefix: '', invoicePrefix: '', receiptPrefix: '' },
+  integrations: { paystackPublicKey: '', flutterwavePublicKey: '', enableLivePayments: false, smsSenderId: '' },
+  pricing: { publicPriceDisplay: 'quote_only', displayDisclaimer: false, allowWhatsappQuotes: false, allowDirectCalls: false, quoteExpiryDaysDefault: 0, showApplicationFee: 'on_request' }
+};
+
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<InstituteSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +34,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       setLoading(true);
       const data = await api.getSettings();
-      setSettings(data);
+      setSettings(data || emptySettings);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load institute settings');

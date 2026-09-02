@@ -19,6 +19,7 @@ import {
   initialShortCourseCategories, initialShortCourses, initialCorporateRequests, initialShortCourseEnrollments,
   initialCorporateQuotations, initialCorporateInvoices, initialQuoteRequests, initialPriceVersions
 } from './initialData';
+import { isPostgresConfigured, queryDatabase, supabasePool } from './supabase';
 
 export interface DatabaseState {
   settings: InstituteSettings;
@@ -66,6 +67,9 @@ class DatabaseService {
   }
 
   private loadInitialData(): DatabaseState {
+    if (isPostgresConfigured) {
+      return this.emptyState();
+    }
     try {
       if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -170,6 +174,17 @@ class DatabaseService {
     return defaultState;
   }
 
+  private emptyState(): DatabaseState {
+    return {
+      settings: {} as InstituteSettings,
+      programs: [], courses: [], shortCourseCategories: [], shortCourses: [], quoteRequests: [], priceVersions: [],
+      corporateRequests: [], corporateQuotations: [], corporateInvoices: [], shortCourseEnrollments: [], users: [],
+      classes: [], students: [], applications: [], admissions: [], timetable: [], attendance: [], assignments: [],
+      submissions: [], results: [], invoices: [], payments: [], certificates: [], announcements: [], newsEvents: [],
+      gallery: [], leads: [], contacts: [], auditLogs: [], testimonials: [], faqs: []
+    };
+  }
+
   private persist(state: DatabaseState) {
     try {
       if (!fs.existsSync(DATA_DIR)) {
@@ -182,7 +197,39 @@ class DatabaseService {
   }
 
   public save() {
+    if (isPostgresConfigured) {
+      void this.persistPostgres();
+      return;
+    }
     this.persist(this.state);
+  }
+
+  public async initializeFromPostgres(): Promise<void> {
+    if (!isPostgresConfigured) return;
+    const rows = await queryDatabase<{ collection: string; id: string; data: any }>('SELECT collection, id, data FROM app_records');
+    for (const row of rows) {
+      const collection = this.state[row.collection as keyof DatabaseState];
+      if (Array.isArray(collection)) {
+        const index = collection.findIndex((item: any) => item.id === row.id);
+        if (index >= 0) collection[index] = row.data;
+        else collection.push(row.data);
+      }
+    }
+  }
+
+  private async persistPostgres(): Promise<void> {
+    if (!supabasePool) return;
+    for (const [collection, value] of Object.entries(this.state)) {
+      if (!Array.isArray(value)) continue;
+      for (const item of value as any[]) {
+        if (!item?.id) continue;
+        await supabasePool.query(
+          `INSERT INTO app_records (collection, id, data, updated_at) VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (collection, id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+          [collection, item.id, item]
+        );
+      }
+    }
   }
 
   public getState(): DatabaseState {
@@ -196,6 +243,8 @@ class DatabaseService {
       courses: initialCourses,
       shortCourseCategories: initialShortCourseCategories,
       shortCourses: initialShortCourses,
+      quoteRequests: initialQuoteRequests,
+      priceVersions: initialPriceVersions,
       corporateRequests: initialCorporateRequests,
       corporateQuotations: initialCorporateQuotations,
       corporateInvoices: initialCorporateInvoices,
@@ -316,7 +365,8 @@ class DatabaseService {
 
   // Generate complete PostgreSQL DDL and Supabase migration script
   public generateSupabaseSql(): string {
-    return `-- =================================================================
+    return fs.readFileSync(path.join(process.cwd(), 'server', 'schema.sql'), 'utf8');
+    /* return `-- =================================================================
 -- AITI (AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE)
 -- COMPLETE SUPABASE & POSTGRESQL PRODUCTION DATABASE SCHEMA
 -- BEYOND TECH — Empowering You Through ICT
@@ -651,7 +701,7 @@ CREATE POLICY "Public can view active programs" ON programs FOR SELECT USING (ac
 CREATE POLICY "Public can view active courses" ON courses FOR SELECT USING (active = true);
 
 -- End of Supabase Schema Script
-`;
+`; */
   }
 }
 

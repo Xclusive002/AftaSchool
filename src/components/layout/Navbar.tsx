@@ -13,7 +13,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
   const { settings } = useSettings();
-  const { currentUser, setRole } = useAuth();
+  const { currentUser, setRole, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPortalsDropdownOpen, setIsPortalsDropdownOpen] = useState(false);
 
@@ -47,6 +47,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
     setIsMobileMenuOpen(false);
   };
 
+  const handleOnlineTrainingClick = () => {
+    onNavigate(currentUser ? 'portal_online_lms' : 'online_courses');
+    setIsPortalsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
       {/* Top Notification Bar */}
@@ -55,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-bold border border-cyan-500/30">
               <Sparkles className="w-3 h-3 text-cyan-400" />
-              {settings?.admissions.activeSession || '2026/2027'} ADMISSIONS OPEN
+              {settings?.admissions?.activeSession || '2026/2027'} ADMISSIONS OPEN
             </span>
             <span className="hidden md:inline text-slate-400">
               3-Month Certificate & 6-Month Diploma Programs • Tanke, Ilorin
@@ -64,14 +70,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
           <div className="flex items-center gap-4 text-slate-300 text-[11px]">
             <a 
-              href={`tel:${settings?.contact.primaryPhone || '08030947468'}`}
+              href={`tel:${settings?.contact?.primaryPhone || ''}`}
               className="hover:text-cyan-400 flex items-center gap-1 transition-colors"
             >
-              <Phone className="w-3 h-3 text-cyan-400" /> {settings?.contact.primaryPhone || '08030947468'}
+              <Phone className="w-3 h-3 text-cyan-400" /> {settings?.contact?.primaryPhone || ''}
             </a>
             <span className="text-slate-600">|</span>
             <a 
-              href={`https://wa.me/234${(settings?.whatsapp.primaryNumber || '08030947468').replace(/^0/, '')}`}
+              href={settings?.whatsapp?.primaryNumber ? `https://wa.me/234${settings.whatsapp.primaryNumber.replace(/^0/, '')}` : '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors"
@@ -101,11 +107,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                   AITI
                 </span>
                 <span className="text-[10px] font-black tracking-widest text-cyan-400 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800/60 uppercase">
-                  {settings?.general.tagline || 'BEYOND TECH'}
+                  {settings?.general?.tagline || ''}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 tracking-wide line-clamp-1 font-medium">
-                {settings?.general.parentOrganization || 'AFTATECH.IT CONSULT'} • Ilorin
+                {settings?.general?.parentOrganization || ''}
               </p>
             </div>
           </div>
@@ -115,9 +121,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             {navLinks.map((link) => (
               <button
                 key={link.view}
-                onClick={() => onNavigate(link.view)}
+                onClick={() => link.view === 'online_courses' ? handleOnlineTrainingClick() : onNavigate(link.view)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1 ${
-                  currentView === link.view
+                  (currentView === link.view || (link.view === 'online_courses' && currentView === 'portal_online_lms'))
                     ? 'text-cyan-400 bg-cyan-950/50 border border-cyan-800/60'
                     : link.isSpecial
                     ? 'text-amber-300 hover:text-amber-200 bg-amber-950/30 border border-amber-800/40'
@@ -138,6 +144,36 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
           {/* Right Action CTAs */}
           <div className="hidden sm:flex items-center gap-3">
+            {currentUser ? (
+              <>
+                <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200">
+                  <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold">
+                    {currentUser.fullName?.charAt(0) || 'U'}
+                  </div>
+                  <div className="leading-tight">
+                    <div className="font-bold text-white">{currentUser.fullName}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">{currentUser.role}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    await logout();
+                    onNavigate('home');
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => onNavigate('login')}
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs tracking-wide transition-all"
+              >
+                Sign in
+              </button>
+            )}
+
             {/* Portals Dropdown */}
             <div className="relative">
               <button
@@ -216,12 +252,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             {navLinks.map((link) => (
               <button
                 key={link.view}
-                onClick={() => {
-                  onNavigate(link.view);
-                  setIsMobileMenuOpen(false);
-                }}
+                  onClick={() => link.view === 'online_courses' ? handleOnlineTrainingClick() : onNavigate(link.view)}
                 className={`p-2.5 text-left rounded-xl text-xs font-semibold ${
-                  currentView === link.view
+                  (currentView === link.view || (link.view === 'online_courses' && currentView === 'portal_online_lms'))
                     ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/60'
                     : 'bg-slate-900/60 text-slate-300 hover:bg-slate-900'
                 }`}

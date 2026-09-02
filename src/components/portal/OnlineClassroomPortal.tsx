@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Laptop, BookOpen, PlayCircle, CheckCircle2, Award, Calendar, 
   FileText, Download, Upload, MessageSquare, Clock, ShieldCheck, 
   ExternalLink, ChevronRight, AlertCircle, ArrowLeft, Video, HelpCircle, 
   DollarSign, Check, Eye
 } from 'lucide-react';
-import { INITIAL_ONLINE_COURSES, DetailedOnlineCourse } from '../../data/onlineCoursesSeed';
+import { DetailedOnlineCourse } from '../../data/onlineCoursesSeed';
 import { formatCurrency } from '../../services/currency';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 interface OnlineClassroomPortalProps {
   onBackToMain?: () => void;
@@ -15,10 +17,16 @@ interface OnlineClassroomPortalProps {
 
 export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ onBackToMain }) => {
   const { settings } = useSettings();
+  const { currentUser } = useAuth();
 
   // Active enrolled course
-  const [selectedCourse, setSelectedCourse] = useState<DetailedOnlineCourse>(INITIAL_ONLINE_COURSES[0]);
-  const [activeTab, setActiveTab] = useState<'curriculum' | 'live_classes' | 'assignments' | 'quizzes' | 'certificate' | 'invoices'>('curriculum');
+  const [selectedCourse, setSelectedCourse] = useState<DetailedOnlineCourse | null>(null);
+  const [activeTab, setActiveTab] = useState<'curriculum' | 'live_classes' | 'assignments' | 'quizzes' | 'certificate' | 'invoices' | 'messages'>('curriculum');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   
   // Active lesson being viewed
   const [activeLesson, setActiveLesson] = useState<any>(selectedCourse.modules[0]?.lessons[0] || null);
@@ -33,6 +41,61 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
   // Assignment submission state
   const [assignmentSubmissionText, setAssignmentSubmissionText] = useState('');
   const [assignmentSubmitted, setAssignmentSubmitted] = useState(false);
+
+  useEffect(() => {
+    api.getLmsCourses().then(courses => {
+      const course = courses[0];
+      if (course) setSelectedCourse(course);
+    }).catch(console.error);
+    if (currentUser) {
+      const studentId = currentUser.studentId || currentUser.id;
+      api.getCertificates(studentId).then(setCertificates).catch(console.error);
+      api.getInvoices(studentId).then(setInvoices).catch(console.error);
+    }
+  }, [currentUser]);
+
+  if (!selectedCourse) {
+    return <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">No online course is currently available.</div>;
+  }
+
+  useEffect(() => {
+    if (activeTab === 'messages' && currentUser) {
+      api.getLmsMessages(selectedCourse.id, currentUser.id).then(setMessages).catch(console.error);
+    }
+  }, [activeTab, currentUser, selectedCourse.id]);
+
+  const handleSendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentUser || !messageText.trim()) return;
+    setSendingMessage(true);
+    try {
+      const message = await api.sendLmsMessage({ courseId: selectedCourse.id, senderId: currentUser.id, body: messageText });
+      setMessages(previous => [...previous, message]);
+      setMessageText('');
+    } catch (err: any) {
+      alert(`Message failed: ${err.message}`);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleSubmitAssignment = async (assignmentId: string) => {
+    if (!currentUser || !assignmentSubmissionText.trim()) {
+      alert('Please provide your project link or submission notes.');
+      return;
+    }
+    try {
+      await api.submitAssignment(assignmentId, {
+        studentId: currentUser.studentId || currentUser.id,
+        studentName: currentUser.fullName,
+        studentNumber: currentUser.studentNumber || currentUser.id,
+        submissionText: assignmentSubmissionText.trim()
+      });
+      setAssignmentSubmitted(true);
+    } catch (err: any) {
+      alert(`Submission failed: ${err.message}`);
+    }
+  };
 
   const toggleLessonComplete = (lessonId: string) => {
     if (completedLessonIds.includes(lessonId)) {
@@ -92,11 +155,11 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
         {/* Student Profile Pill */}
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <strong className="text-xs text-white block">Adewale Johnson</strong>
-            <span className="text-[10px] text-cyan-400 font-mono">AITI/ONL/2026/0042</span>
+            <strong className="text-xs text-white block">{currentUser?.fullName || 'Learner'}</strong>
+            <span className="text-[10px] text-cyan-400 font-mono">{currentUser?.studentNumber || currentUser?.id || ''}</span>
           </div>
           <div className="w-8 h-8 rounded-full bg-cyan-600 border border-cyan-400 flex items-center justify-center font-bold text-xs text-slate-950">
-            AJ
+            {(currentUser?.fullName || 'L').slice(0, 2).toUpperCase()}
           </div>
         </div>
       </header>
@@ -113,6 +176,7 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
             { id: 'quizzes', label: 'Quizzes & Tests', icon: HelpCircle },
             { id: 'certificate', label: 'Verified Certificate', icon: Award },
             { id: 'invoices', label: 'Receipt & Invoice', icon: DollarSign }
+            , { id: 'messages', label: 'Instructor Messages', icon: MessageSquare }
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -309,6 +373,16 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
           </div>
         )}
 
+        {activeTab === 'messages' && (
+          <div className="max-w-3xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5">
+            <div><h2 className="text-xl font-bold text-white">Instructor Messages</h2><p className="text-xs text-slate-400 mt-1">Ask questions and receive course updates from your instructor.</p></div>
+            <div className="min-h-64 max-h-[32rem] overflow-y-auto space-y-2 bg-slate-950 rounded-2xl border border-slate-800 p-4">
+              {messages.length === 0 ? <p className="text-xs text-slate-500 text-center py-16">No messages yet.</p> : messages.map(message => <div key={message.id} className="rounded-xl border border-slate-800 p-3 text-xs"><div className="text-[10px] text-cyan-400">{message.senderId === currentUser?.id ? 'You' : 'Instructor'} · {new Date(message.createdAt).toLocaleString()}</div><p className="text-slate-200 mt-1">{message.body}</p></div>)}
+            </div>
+            <form onSubmit={handleSendMessage} className="flex gap-2"><input value={messageText} onChange={event => setMessageText(event.target.value)} placeholder="Ask your instructor a question..." className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-xs text-white" /><button type="submit" disabled={sendingMessage} className="bg-cyan-500 text-slate-950 px-4 rounded-xl"><MessageSquare className="w-4 h-4" /></button></form>
+          </div>
+        )}
+
         {/* TAB 2: LIVE MASTERCLASSES */}
         {activeTab === 'live_classes' && (
           <div className="space-y-6 max-w-4xl mx-auto">
@@ -438,13 +512,7 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
                         ></textarea>
 
                         <button
-                          onClick={() => {
-                            if (!assignmentSubmissionText.trim()) {
-                              alert('Please provide your project link or submission notes.');
-                              return;
-                            }
-                            setAssignmentSubmitted(true);
-                          }}
+                          onClick={() => handleSubmitAssignment(asg.id)}
                           className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow"
                         >
                           <Upload className="w-3.5 h-3.5" />
@@ -632,7 +700,7 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
                 <div className="space-y-1">
                   <span className="text-xs text-slate-400 uppercase font-semibold">This is to certify that</span>
                   <div className="text-2xl font-serif font-black text-amber-300">
-                    Adewale Johnson
+                    {currentUser?.fullName || ''}
                   </div>
                   <p className="text-xs text-slate-300">
                     has successfully completed the comprehensive professional training program in
@@ -645,15 +713,15 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[11px] pt-4 border-t border-slate-800 text-slate-300">
                   <div>
                     <span className="text-slate-500 block">Certificate No:</span>
-                    <strong className="text-white font-mono">AITI/CERT/2026/089</strong>
+                    <strong className="text-white font-mono">{certificates[0]?.certificateNumber || ''}</strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Issue Date:</span>
-                    <strong className="text-white">Sep 2026</strong>
+                    <strong className="text-white">{certificates[0]?.completionDate || ''}</strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Verification:</span>
-                    <strong className="text-emerald-400">Authentic / Secured</strong>
+                    <strong className="text-emerald-400">{certificates[0] ? 'Authentic / Secured' : 'Pending completion'}</strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Delivery:</span>
@@ -698,11 +766,11 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
               <div className="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-4 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Student Name:</span>
-                  <strong className="text-white">Adewale Johnson</strong>
+                  <strong className="text-white">{currentUser?.fullName || ''}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Student ID / Location:</span>
-                  <strong className="text-white">AITI/ONL/2026/0042 • Nigeria</strong>
+                  <strong className="text-white">{currentUser?.studentNumber || currentUser?.id || ''}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Course:</span>
@@ -710,11 +778,11 @@ export const OnlineClassroomPortal: React.FC<OnlineClassroomPortalProps> = ({ on
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Payment Gateway:</span>
-                  <strong className="text-emerald-400">Paystack Server-Verified (Live)</strong>
+                  <strong className="text-emerald-400">{invoices[0]?.status || ''}</strong>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-slate-800">
                   <span>Total Amount Paid:</span>
-                  <span className="text-emerald-400 text-base">{formatCurrency(selectedCourse.localOnlinePrice || 45000, 'NGN', { showCode: true })}</span>
+                  <span className="text-emerald-400 text-base">{invoices[0] ? formatCurrency(invoices[0].amountPaid || 0, 'NGN', { showCode: true }) : ''}</span>
                 </div>
               </div>
 

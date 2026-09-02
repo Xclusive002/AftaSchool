@@ -346,8 +346,8 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
                     courseTitle={course.title}
                     courseId={course.id}
                     courseCode={course.id}
-                    exactPrice={course.tuitionNGN || 70000}
-                    exactPriceUSD={course.tuitionUSD || 120}
+                    exactPrice={course.localOnlinePrice || 70000}
+                    exactPriceUSD={course.internationalOnlinePrice || 120}
                     isInternational={studentLocation === 'Outside Nigeria'}
                     trainingType="online_course"
                     deliveryMode="online_live"
