@@ -121,7 +121,8 @@ export const QuoteRequestModal: React.FC<QuoteRequestModalProps> = ({
   };
 
   const getWhatsappUrl = () => {
-    const rawNumber = settings.general.phone1.replace(/[^0-9]/g, '');
+    const phone = settings?.contact?.primaryPhone || '';
+    const rawNumber = phone.replace(/[^0-9]/g, '');
     const intlNumber = rawNumber.startsWith('0') ? `234${rawNumber.slice(1)}` : rawNumber;
     const greeting = studentType === 'international_online'
       ? `Hello AITI, I am an international applicant interested in the current USD fee for "${courseTitle}". My Quote Reference is ${submittedQuote?.referenceNumber || 'N/A'}.`
@@ -237,11 +238,11 @@ export const QuoteRequestModal: React.FC<QuoteRequestModalProps> = ({
 
                   <a
                     id="quote-instant-call-link"
-                    href={`tel:${settings.general.phone1}`}
+                    href={`tel:${settings?.contact?.primaryPhone || ''}`}
                     className="flex items-center justify-center gap-2 py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-xs transition-colors text-sm"
                   >
                     <Phone className="w-4 h-4 text-amber-400" />
-                    Call AITI Desk ({settings.general.phone1})
+                    Call AITI Desk ({settings?.contact?.primaryPhone || ''})
                   </a>
                 </div>
               </div>

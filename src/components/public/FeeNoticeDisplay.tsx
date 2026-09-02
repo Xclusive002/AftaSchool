@@ -39,7 +39,8 @@ export const FeeNoticeDisplay: React.FC<FeeNoticeDisplayProps> = ({
   const { settings } = useSettings();
   const pricingMode = settings.pricing?.publicPriceDisplay || 'quote_only';
 
-  const rawPhone = settings.general.phone1.replace(/[^0-9]/g, '');
+  const phone = settings?.contact?.primaryPhone || '';
+  const rawPhone = phone.replace(/[^0-9]/g, '');
   const intlPhone = rawPhone.startsWith('0') ? `234${rawPhone.slice(1)}` : rawPhone;
   const whatsappMsg = isInternational
     ? `Hello AITI, I am an international student interested in taking ${courseTitle} online. Please send me the current international USD course fee.`
@@ -197,7 +198,7 @@ export const FeeNoticeDisplay: React.FC<FeeNoticeDisplayProps> = ({
           </a>
 
           <a
-            href={`tel:${settings.general.phone1}`}
+            href={`tel:${phone}`}
             className="py-3 px-4 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
           >
             <Phone className="w-3.5 h-3.5 text-navy-800" />
