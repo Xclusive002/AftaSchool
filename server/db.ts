@@ -176,7 +176,7 @@ class DatabaseService {
 
   private emptyState(): DatabaseState {
     return {
-      settings: {} as InstituteSettings,
+      settings: initialSettings,
       programs: [], courses: [], shortCourseCategories: [], shortCourses: [], quoteRequests: [], priceVersions: [],
       corporateRequests: [], corporateQuotations: [], corporateInvoices: [], shortCourseEnrollments: [], users: [],
       classes: [], students: [], applications: [], admissions: [], timetable: [], attendance: [], assignments: [],
@@ -294,7 +294,8 @@ class DatabaseService {
 
   // Next ID Generators
   public generateNextApplicationId(): string {
-    const prefix = this.state.settings.numbering.applicationPrefix || 'AITI/2026/';
+    const numbering = this.state.settings?.numbering || initialSettings.numbering;
+    const prefix = numbering.applicationPrefix || 'AITI/2026/';
     const count = this.state.applications.length + 1;
     return `${prefix}${count.toString().padStart(6, '0')}`;
   }

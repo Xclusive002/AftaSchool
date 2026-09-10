@@ -2831,6 +2831,14 @@ async function startServer() {
     res.send(sql);
   });
 
+  // JSON body parser error fallback: return JSON instead of an HTML page.
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({ success: false, error: 'Invalid JSON payload.' });
+    }
+    next(err);
+  });
+
   // ==========================================
   // Vite Middleware & Static Serving
   // ==========================================

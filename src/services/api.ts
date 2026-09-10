@@ -85,7 +85,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('The application server returned a page instead of a JSON response.');
+    }
     if (!data.success) throw new Error(data.error || 'Failed to submit application');
     return data;
   },
@@ -107,7 +113,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gateway, gatewayReference })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('The payment server returned a page instead of a JSON response.');
+    }
     if (!data.success) throw new Error(data.error || 'Failed to pay application fee');
     return data;
   },
