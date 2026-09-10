@@ -194,6 +194,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ initialProgram
 
       setCompletedApp(payResult.application);
       setCompletedReceipt(payResult.receipt);
+
+      if (payResult.checkoutUrl) {
+        window.location.assign(payResult.checkoutUrl);
+        return;
+      }
+
       setStep(9); // Success state
     } catch (err: any) {
       alert('Error submitting application: ' + err.message);
