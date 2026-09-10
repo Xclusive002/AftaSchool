@@ -6,6 +6,22 @@ import {
   ContactMessage, AuditLog, Testimonial, FaqItem, QuoteRequest, PriceVersionLog
 } from '../types';
 
+async function readJsonResponse(res: Response, fallbackError: string): Promise<any> {
+  const text = await res.text();
+  if (!text || !text.trim()) {
+    throw new Error(fallbackError);
+  }
+  const trimmed = text.trim();
+  if (trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html') || trimmed.startsWith('The page')) {
+    throw new Error('The application server returned a page instead of a JSON response.');
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(fallbackError);
+  }
+}
+
 export const api = {
   // Settings
   async getSettings(): Promise<InstituteSettings> {
@@ -85,13 +101,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const text = await res.text();
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error('The application server returned a page instead of a JSON response.');
-    }
+    const data = await readJsonResponse(res, 'Failed to submit application');
     if (!data.success) throw new Error(data.error || 'Failed to submit application');
     return data;
   },
@@ -113,13 +123,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gateway, gatewayReference })
     });
-    const text = await res.text();
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error('The payment server returned a page instead of a JSON response.');
-    }
+    const data = await readJsonResponse(res, 'Failed to pay application fee');
     if (!data.success) throw new Error(data.error || 'Failed to pay application fee');
     return data;
   },

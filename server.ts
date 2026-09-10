@@ -22,6 +22,13 @@ async function startServer() {
   app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError || String(err.message || '').includes('JSON'))) {
+      return res.status(400).json({ success: false, error: 'Invalid JSON payload.' });
+    }
+    return next(err);
+  });
+
   // Request logger for audit & tracking
   app.use((req, res, next) => {
     if (req.url.startsWith('/api')) {
@@ -2829,14 +2836,6 @@ async function startServer() {
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Content-Disposition', 'attachment; filename="aiti_supabase_schema.sql"');
     res.send(sql);
-  });
-
-  // JSON body parser error fallback: return JSON instead of an HTML page.
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err instanceof SyntaxError && 'body' in err) {
-      return res.status(400).json({ success: false, error: 'Invalid JSON payload.' });
-    }
-    next(err);
   });
 
   // ==========================================
