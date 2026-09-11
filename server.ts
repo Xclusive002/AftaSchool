@@ -3155,6 +3155,18 @@ async function startServer() {
 const serverReady = startServer();
 
 export default async function handler(req: express.Request, res: express.Response) {
-  await serverReady;
-  return app(req, res);
+  try {
+    await serverReady;
+    return app(req, res);
+  } catch (error: any) {
+    console.error('Server initialization failed:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: 'Application server initialization failed.',
+        details: error?.message || String(error)
+      });
+    }
+    return res.end();
+  }
 }
