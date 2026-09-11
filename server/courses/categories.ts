@@ -1,4 +1,4 @@
-import { ShortCourseCategory } from '../../src/types';
+import { ShortCourseCategory } from '../../src/types.js';
 
 export const comprehensiveShortCourseCategories: ShortCourseCategory[] = [
   {

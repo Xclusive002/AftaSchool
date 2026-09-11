@@ -1,4 +1,4 @@
-import { ShortCourse } from '../../src/types';
+import { ShortCourse } from '../../src/types.js';
 
 export const coursesPart2: ShortCourse[] = [
   // ----------------------------------------------------

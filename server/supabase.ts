@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
-import { INITIAL_ONLINE_COURSES } from '../src/data/onlineCoursesSeed';
+import { INITIAL_ONLINE_COURSES } from '../src/data/onlineCoursesSeed.js';
 
 const { Pool } = pg;
 
