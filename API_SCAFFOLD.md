@@ -88,3 +88,15 @@ Every file in `api/` is a native Vercel function. Each currently exports a share
 ## Shared handler
 
 `serverless/handler.ts` contains the plain Node response helper, JSON body reader, and scaffold placeholder. Route implementations can be migrated one function at a time without reintroducing Express.
+
+## Database setup
+
+Serverless routes should import `query` from `lib/db.js`. Set `DATABASE_URL` in Vercel to the Supabase pooled connection string using port `6543` (PgBouncer), not the direct port `5432` connection. The pool is cached on `globalThis` and capped at five connections per warm function process.
+
+The deployed application requires `DATABASE_URL` and does not use the old local JSON store. Initialize the schema and seed data once, manually, with:
+
+```sh
+node scripts/init-db.js
+```
+
+Set `ADMIN_EMAIL`, `ADMIN_FULL_NAME`, and optionally `ADMIN_USER_ID` before running the setup script.
