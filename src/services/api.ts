@@ -117,7 +117,7 @@ export const api = {
     return data.application;
   },
 
-  async payApplicationFee(id: string, gateway: string, gatewayReference?: string): Promise<{ application: Application; receipt: PaymentTransaction }> {
+  async payApplicationFee(id: string, gateway: string, gatewayReference?: string): Promise<{ application: Application; receipt: PaymentTransaction; checkoutUrl?: string; reference?: string }> {
     const res = await fetch(`/api/applications/${id}/pay-fee`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

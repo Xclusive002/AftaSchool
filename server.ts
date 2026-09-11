@@ -61,7 +61,7 @@ function recordVerifiedPaystackPayment(reference: string, paystackData?: any) {
   appRecord.paymentStatus = 'paid';
   appRecord.paymentReference = normalizedReference;
   appRecord.paidAt = new Date().toISOString();
-  if (appRecord.status === 'pending') {
+  if (appRecord.status === 'payment_pending') {
     appRecord.status = 'submitted';
   }
 
@@ -875,7 +875,7 @@ async function startServer() {
               studentEmail: appRecord.email,
               paymentType: 'application_fee' as const,
               amount: appRecord.paymentAmount || state.settings.admissions.applicationFee,
-              gateway: 'paystack',
+              gateway: 'paystack' as const,
               gatewayReference: reference,
               status: 'pending' as const,
               channel: 'Online Payment Gateway',
