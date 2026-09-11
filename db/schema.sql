@@ -130,7 +130,6 @@ CREATE TABLE IF NOT EXISTS lms_messages (
 );
 
 CREATE INDEX IF NOT EXISTS lms_messages_course_idx ON lms_messages(course_id, created_at DESC);
-
 CREATE INDEX IF NOT EXISTS users_role_idx ON users(role);
 CREATE INDEX IF NOT EXISTS audit_logs_timestamp_idx ON audit_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS quote_requests_status_idx ON quote_requests(status);

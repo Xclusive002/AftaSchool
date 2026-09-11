@@ -50,6 +50,8 @@ export const VerificationPage: React.FC = () => {
         verified: res.verified,
         type: res.type || (typeToVerify || 'receipt'),
         data: res.data,
+        application: res.application,
+        receipt: res.receipt,
         message: res.message || 'Payment verification completed.'
       });
     } catch (err: any) {
@@ -323,6 +325,17 @@ export const VerificationPage: React.FC = () => {
                       <span className="text-emerald-400 uppercase font-bold">{verificationResult.data.status}</span>
                     </div>
                   </div>
+                )}
+
+                {verificationResult.type === 'receipt' && verificationResult.data?.paymentType === 'application_fee' && verificationResult.data?.whatsappGroupUrl && (
+                  <a
+                    href={verificationResult.data.whatsappGroupUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-500"
+                  >
+                    Join the AITI WhatsApp Group <ExternalLink className="h-4 w-4" />
+                  </a>
                 )}
               </div>
 

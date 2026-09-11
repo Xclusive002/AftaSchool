@@ -89,6 +89,10 @@
 
 `serverless/handler.ts` contains the plain Node response helper, JSON body reader, and scaffold placeholder. Route implementations can be migrated one function at a time without reintroducing Express.
 
+For local frontend development, use `npm run dev`. For full-stack local development, use `npm run dev:fullstack`, which runs `vercel dev` and executes both the Vite frontend and `/api` serverless functions. Vite alone cannot execute API functions; the Vercel CLI must be installed and available on `PATH`.
+
+When Vercel CLI authentication or network access is unavailable, run `npm run dev:api` in a second terminal alongside `npm run dev`. This uses the same serverless handlers through a small local Node adapter on port 3000.
+
 ## Database setup
 
 Serverless routes should import `query` from `lib/db.js`. Set `DATABASE_URL` in Vercel to the Supabase pooled connection string using port `6543` (PgBouncer), not the direct port `5432` connection. The pool is cached on `globalThis` and capped at five connections per warm function process.

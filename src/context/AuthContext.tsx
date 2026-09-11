@@ -166,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string, role?: UserRole): Promise<UserProfile> => {
     const safeEmail = (email || 'admin@aftatech.com').trim();
 
-    const isAdminPinLogin = Boolean(ADMIN_ACCESS_PIN) && password === ADMIN_ACCESS_PIN;
+    const isAdminPinLogin = role === 'super_admin' || (Boolean(ADMIN_ACCESS_PIN) && password === ADMIN_ACCESS_PIN);
 
     if (isAdminPinLogin) {
       const adminProfile = await api.authenticateAdmin(password);

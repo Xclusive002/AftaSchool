@@ -22,7 +22,7 @@ async function loadLmsCatalog() {
 }
 
 async function initialize() {
-  const schema = await fs.readFile(path.join(root, 'server', 'schema.sql'), 'utf8');
+  const schema = await fs.readFile(path.join(root, 'db', 'schema.sql'), 'utf8');
   const client = await getClient();
 
   try {
