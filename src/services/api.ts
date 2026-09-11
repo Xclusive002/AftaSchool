@@ -9,16 +9,16 @@ import {
 async function readJsonResponse(res: Response, fallbackError: string): Promise<any> {
   const text = await res.text();
   if (!text || !text.trim()) {
-    throw new Error(fallbackError);
+    throw new Error(`${fallbackError} (HTTP ${res.status})`);
   }
   const trimmed = text.trim();
   if (trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html') || trimmed.startsWith('The page')) {
-    throw new Error('The application server returned a page instead of a JSON response.');
+    throw new Error(`${fallbackError} (HTTP ${res.status}; server returned HTML)`);
   }
   try {
     return JSON.parse(trimmed);
   } catch {
-    throw new Error(fallbackError);
+    throw new Error(`${fallbackError} (HTTP ${res.status}: ${trimmed.slice(0, 160)})`);
   }
 }
 

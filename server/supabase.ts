@@ -36,7 +36,18 @@ export async function initializeDatabaseSchema(): Promise<void> {
   if (!supabasePool) return;
   const schemaPath = path.join(process.cwd(), 'server', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
-  await supabasePool.query(schema);
+  const client = await supabasePool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [27483921]);
+    await client.query(schema);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function initializeAdminUser(): Promise<void> {

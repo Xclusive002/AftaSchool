@@ -3123,14 +3123,15 @@ async function startServer() {
   // ==========================================
   // Vite Middleware & Static Serving
   // ==========================================
-  if (process.env.NODE_ENV !== 'production') {
+  const isVercel = Boolean(process.env.VERCEL);
+  if (!isVercel && process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!isVercel) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
