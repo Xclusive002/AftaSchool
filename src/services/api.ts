@@ -431,6 +431,13 @@ export const api = {
   },
 
   // Verification Portal
+  async verifyPayment(reference: string): Promise<{ success: boolean; verified: boolean; type?: string; data?: any; message?: string; receipt?: any; application?: any }> {
+    const res = await fetch(`/api/payments/verify/${encodeURIComponent(reference)}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || data.message || 'Payment verification failed');
+    return data;
+  },
+
   async verifyCode(code: string, type?: string): Promise<{ success: boolean; verified: boolean; type?: string; data?: any; message?: string }> {
     const params = new URLSearchParams({ code });
     if (type) params.append('type', type);

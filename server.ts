@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'crypto';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -6,9 +7,114 @@ import { db } from './server/db';
 import { askVisitorAdmissionAi, askAdminAi } from './server/ai';
 import { initializeDatabaseSchema, initializeAdminUser, initializeLmsCatalog, isPostgresConfigured, queryDatabase, supabasePool } from './server/supabase';
 
+const normalizePaystackReference = (value?: string | null) => String(value || '').trim();
+
+function mapAdminUser(user: any) {
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    phone: user.phone || '',
+    whatsapp: user.whatsapp || user.phone || '',
+    role: user.role,
+    department: user.department || 'General',
+    studentId: user.studentId || '',
+    studentNumber: user.studentNumber || '',
+    admissionNumber: user.admissionNumber || '',
+    linkedStudentId: user.linkedStudentId || '',
+    createdAt: user.createdAt || new Date().toISOString()
+  };
+}
+
+function recordVerifiedPaystackPayment(reference: string, paystackData?: any) {
+  const state = db.getState();
+  const normalizedReference = normalizePaystackReference(reference || paystackData?.reference);
+
+  if (!normalizedReference) {
+    throw new Error('Paystack reference is required.');
+  }
+
+  let appRecord = state.applications.find((application: any) =>
+    application.paymentReference === normalizedReference ||
+    application.applicationId === paystackData?.metadata?.applicationId ||
+    application.id === paystackData?.metadata?.applicationRecordId
+  );
+
+  if (!appRecord) {
+    const paymentRecord = state.payments.find((payment: any) =>
+      payment.gatewayReference === normalizedReference ||
+      payment.receiptNumber === normalizedReference
+    );
+
+    if (paymentRecord) {
+      appRecord = state.applications.find((application: any) =>
+        application.email === paymentRecord.studentEmail &&
+        (!application.paymentReference || application.paymentReference === normalizedReference || application.paymentStatus !== 'paid')
+      );
+    }
+  }
+
+  if (!appRecord) {
+    throw new Error('No matching application was found for this Paystack payment reference.');
+  }
+
+  appRecord.paymentStatus = 'paid';
+  appRecord.paymentReference = normalizedReference;
+  appRecord.paidAt = new Date().toISOString();
+  if (appRecord.status === 'pending') {
+    appRecord.status = 'submitted';
+  }
+
+  let paymentRecord = state.payments.find((payment: any) =>
+    payment.gatewayReference === normalizedReference ||
+    payment.receiptNumber === normalizedReference ||
+    (payment.studentEmail === appRecord.email && payment.paymentType === 'application_fee' && payment.status !== 'success')
+  );
+
+  if (!paymentRecord) {
+    const receiptNumber = db.generateNextReceiptNumber();
+    paymentRecord = {
+      id: `pay-${Date.now()}`,
+      receiptNumber,
+      studentName: `${appRecord.firstName} ${appRecord.lastName}`,
+      studentEmail: appRecord.email,
+      paymentType: 'application_fee',
+      amount: Number(appRecord.paymentAmount || state.settings.admissions.applicationFee || 0),
+      gateway: 'paystack',
+      gatewayReference: normalizedReference,
+      status: 'success',
+      channel: 'Online Payment Gateway',
+      paidAt: new Date().toISOString(),
+      verifiedBy: 'Paystack Verification',
+      notes: `Application Fee for ${appRecord.applicationId} (${appRecord.programTitle})`,
+      qrVerificationUrl: `/verify?type=receipt&code=${receiptNumber}`
+    };
+    state.payments.unshift(paymentRecord);
+  } else {
+    paymentRecord.status = 'success';
+    paymentRecord.gatewayReference = normalizedReference;
+    paymentRecord.paidAt = paymentRecord.paidAt || new Date().toISOString();
+    paymentRecord.verifiedBy = 'Paystack Verification';
+  }
+
+  db.save();
+  db.addAuditLog(
+    `${appRecord.firstName} ${appRecord.lastName}`,
+    'student',
+    'APPLICATION_FEE_VERIFIED',
+    'Payment',
+    paymentRecord.receiptNumber,
+    `Paystack payment ${normalizedReference} verified for ${appRecord.applicationId}`
+  );
+
+  return { success: true, verified: true, application: appRecord, receipt: paymentRecord };
+}
+
+const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = 3000;
+  app.set('trust proxy', true);
 
   if (isPostgresConfigured) {
     await initializeDatabaseSchema();
@@ -17,6 +123,8 @@ async function startServer() {
     await db.initializeFromPostgres();
     console.log('PostgreSQL schema is ready.');
   }
+
+  app.use('/api/webhooks/paystack', express.raw({ type: 'application/json' }));
 
   // JSON Body Parser with 20MB limit for document upload base64 strings
   app.use(express.json({ limit: '25mb' }));
@@ -727,7 +835,8 @@ async function startServer() {
       if (gateway === 'paystack' && secretKey) {
         try {
           const amountKobo = Math.round(Number(appRecord.paymentAmount || state.settings.admissions.applicationFee || 0) * 100);
-          const callbackUrl = `${req.protocol || 'http'}://${req.headers.host}/verify?type=receipt&code=${encodeURIComponent(appRecord.applicationId || id)}`;
+          const protocol = req.secure || (req.headers['x-forwarded-proto'] === 'https') ? 'https' : 'http';
+          const callbackUrl = `${protocol}://${req.headers.host}/verify?type=receipt&reference=${encodeURIComponent(String(appRecord.paymentReference || ''))}`;
           const paystackBody = {
             email: appRecord.email,
             amount: amountKobo,
@@ -1027,20 +1136,33 @@ async function startServer() {
 
   app.post('/api/admin/authenticate', async (req, res) => {
     try {
-      if (!isPostgresConfigured || req.body?.pin !== process.env.ADMIN_ACCESS_PIN) {
+      const suppliedPin = String(req.body?.pin ?? '');
+      const expectedPin = String(process.env.ADMIN_ACCESS_PIN ?? '');
+      if (suppliedPin !== expectedPin) {
         return res.status(401).json({ success: false, error: 'Invalid administrator access PIN.' });
       }
-      const users = await queryDatabase<any>(
-        `SELECT id, email, full_name AS "fullName", phone, whatsapp, role, department,
-                student_id AS "studentId", student_number AS "studentNumber",
-                admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId",
-                created_at AS "createdAt"
-         FROM users WHERE role IN ('super_admin', 'admin') ORDER BY created_at ASC LIMIT 1`
-      );
-      if (!users[0]) {
-        return res.status(404).json({ success: false, error: 'No administrator account exists in the database.' });
+
+      if (isPostgresConfigured) {
+        const users = await queryDatabase<any>(
+          `SELECT id, email, full_name AS "fullName", phone, whatsapp, role, department,
+                  student_id AS "studentId", student_number AS "studentNumber",
+                  admission_number AS "admissionNumber", linked_student_id AS "linkedStudentId",
+                  created_at AS "createdAt"
+           FROM users WHERE role IN ('super_admin', 'admin') ORDER BY created_at ASC LIMIT 1`
+        );
+        if (!users[0]) {
+          return res.status(404).json({ success: false, error: 'No administrator account exists in the database.' });
+        }
+        return res.json({ success: true, user: users[0] });
       }
-      res.json({ success: true, user: users[0] });
+
+      const state = db.getState();
+      const adminUsers = (state.users || []).filter((user: any) => ['super_admin', 'admin'].includes(user.role));
+      if (!adminUsers[0]) {
+        return res.status(404).json({ success: false, error: 'No administrator account exists in the local JSON store.' });
+      }
+
+      return res.json({ success: true, user: mapAdminUser(adminUsers[0]) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -1426,6 +1548,90 @@ async function startServer() {
   });
 
   // 10. Finance, Invoices & Payments
+  app.get('/api/payments/verify/:reference', async (req, res) => {
+    try {
+      const reference = normalizePaystackReference(req.params.reference);
+      const secretKey = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '';
+      if (!reference) {
+        return res.status(400).json({ success: false, verified: false, message: 'Paystack reference is required.' });
+      }
+      if (!secretKey) {
+        return res.status(400).json({ success: false, verified: false, message: 'Paystack secret key is not configured.' });
+      }
+
+      const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const paystackJson = await paystackRes.json();
+      if (!paystackRes.ok || !paystackJson?.status || paystackJson?.data?.status !== 'success') {
+        return res.status(400).json({
+          success: false,
+          verified: false,
+          message: paystackJson?.message || 'Payment verification is still pending or failed.'
+        });
+      }
+
+      const result = recordVerifiedPaystackPayment(reference, paystackJson.data);
+      return res.json({
+        success: true,
+        verified: true,
+        type: 'receipt',
+        data: {
+          receiptNumber: result.receipt.receiptNumber,
+          studentName: result.receipt.studentName,
+          amount: result.receipt.amount,
+          paymentType: result.receipt.paymentType,
+          paidAt: result.receipt.paidAt,
+          status: result.receipt.status,
+          institute: db.getState().settings.general.fullName
+        },
+        application: result.application,
+        receipt: result.receipt,
+        message: 'Payment verified successfully.'
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, verified: false, error: err.message });
+    }
+  });
+
+  app.post('/api/webhooks/paystack', async (req, res) => {
+    try {
+      const secretKey = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '';
+      const signature = req.headers['x-paystack-signature'];
+      if (!secretKey) {
+        return res.status(400).json({ success: false, message: 'Paystack secret key is not configured.' });
+      }
+      if (!signature) {
+        return res.status(401).json({ success: false, message: 'Missing Paystack signature header.' });
+      }
+
+      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
+      const expectedSignature = crypto.createHmac('sha512', secretKey).update(rawBody).digest('hex');
+      if (expectedSignature !== String(signature)) {
+        return res.status(401).json({ success: false, message: 'Invalid Paystack webhook signature.' });
+      }
+
+      const payload = JSON.parse(rawBody.toString('utf-8')); 
+      if (payload?.event !== 'charge.success') {
+        return res.json({ success: true, received: true, ignored: true, message: 'Webhook event ignored.' });
+      }
+
+      const reference = normalizePaystackReference(payload?.data?.reference);
+      if (!reference) {
+        return res.status(400).json({ success: false, message: 'Paystack webhook reference is missing.' });
+      }
+
+      const result = recordVerifiedPaystackPayment(reference, payload.data);
+      return res.json({ success: true, verified: true, message: 'Paystack webhook processed successfully.', application: result.application, receipt: result.receipt });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   app.get('/api/invoices', (req, res) => {
     const state = db.getState();
     const { studentId } = req.query;
@@ -2932,13 +3138,18 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`====================================================`);
-    console.log(`AITI (AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE)`);
-    console.log(`BEYOND TECH — Empowering You Through ICT`);
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-    console.log(`====================================================`);
-  });
+  if (!process.env.VERCEL && process.argv[1] && path.resolve(process.argv[1]).endsWith('server.ts')) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`====================================================`);
+      console.log(`AITI (AFTATECH INFORMATION TECHNOLOGICAL INSTITUTE)`);
+      console.log(`BEYOND TECH — Empowering You Through ICT`);
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+      console.log(`====================================================`);
+    });
+  }
+
+  return app;
 }
 
 startServer();
+export default app;

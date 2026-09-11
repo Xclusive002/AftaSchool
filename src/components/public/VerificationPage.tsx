@@ -18,14 +18,46 @@ export const VerificationPage: React.FC = () => {
   // Check URL params for QR code redirects
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const referenceParam = urlParams.get('reference');
     const codeParam = urlParams.get('code');
     const typeParam = urlParams.get('type');
+
+    if (referenceParam) {
+      setSearchCode(referenceParam);
+      if (typeParam) setDocType(typeParam);
+      void handlePaymentVerification(referenceParam, typeParam || undefined);
+      return;
+    }
+
     if (codeParam) {
       setSearchCode(codeParam);
       if (typeParam) setDocType(typeParam);
-      handleVerify(codeParam, typeParam || undefined);
+      void handleVerify(codeParam, typeParam || undefined);
     }
   }, []);
+
+  const handlePaymentVerification = async (reference: string, typeToVerify?: string) => {
+    if (!reference) {
+      return;
+    }
+
+    setLoading(true);
+    setSearched(true);
+    try {
+      const res = await api.verifyPayment(reference);
+      setVerificationResult({
+        success: true,
+        verified: res.verified,
+        type: res.type || (typeToVerify || 'receipt'),
+        data: res.data,
+        message: res.message || 'Payment verification completed.'
+      });
+    } catch (err: any) {
+      setVerificationResult({ success: false, verified: false, message: err.message || 'Payment verification failed' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVerify = async (codeToVerify?: string, typeToVerify?: string) => {
     const code = (codeToVerify || searchCode).trim();
