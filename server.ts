@@ -3151,5 +3151,9 @@ async function startServer() {
   return app;
 }
 
-startServer();
-export default app;
+const serverReady = startServer();
+
+export default async function handler(req: express.Request, res: express.Response) {
+  await serverReady;
+  return app(req, res);
+}
