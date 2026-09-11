@@ -5,10 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/[...path].ts": {
-      "includeFiles": [
-        "server/schema.sql",
-        "data/**"
-      ],
+      "includeFiles": "{server/**,data/**}",
       "maxDuration": 60
     }
   }
