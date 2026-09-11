@@ -1,6 +1,6 @@
 import { InstituteSettings, Program, Course, Application, AdmissionRecord, Student, AcademicClass, TimetableEntry, AttendanceRecord, Assignment, AssignmentSubmission, AssessmentResult, Invoice, PaymentTransaction, Certificate, Announcement, NewsEventItem, GalleryItem, CRMLead, ContactMessage, AuditLog, Testimonial, FaqItem, UserProfile, ShortCourseCategory, ShortCourse, CorporateTrainingRequest, ShortCourseEnrollment, CorporateQuotation, CorporateInvoice, QuoteRequest, PriceVersionLog } from '../src/types';
-import { comprehensiveCategories } from './courses/categories';
-import { comprehensiveShortCourses } from './courses/courses';
+import { comprehensiveCategories } from './courses/categories.js';
+import { comprehensiveShortCourses } from './courses/courses.js';
 
 export const initialSettings: InstituteSettings = {
   general: {

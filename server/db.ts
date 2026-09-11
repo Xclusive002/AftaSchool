@@ -18,8 +18,8 @@ import {
   initialContacts, initialAuditLogs, initialTestimonials, initialFaqs,
   initialShortCourseCategories, initialShortCourses, initialCorporateRequests, initialShortCourseEnrollments,
   initialCorporateQuotations, initialCorporateInvoices, initialQuoteRequests, initialPriceVersions
-} from './initialData';
-import { isPostgresConfigured, queryDatabase, supabasePool } from './supabase';
+} from './initialData.js';
+import { isPostgresConfigured, queryDatabase, supabasePool } from './supabase.js';
 
 export interface DatabaseState {
   settings: InstituteSettings;

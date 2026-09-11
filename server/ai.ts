@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { db } from './db';
+import { db } from './db.js';
 
 // Server-side lazy initialization for Google GenAI
 let aiClient: GoogleGenAI | null = null;

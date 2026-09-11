@@ -3,9 +3,9 @@ import crypto from 'crypto';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { db } from './server/db';
-import { askVisitorAdmissionAi, askAdminAi } from './server/ai';
-import { initializeDatabaseSchema, initializeAdminUser, initializeLmsCatalog, isPostgresConfigured, queryDatabase, supabasePool } from './server/supabase';
+import { db } from './server/db.js';
+import { askVisitorAdmissionAi, askAdminAi } from './server/ai.js';
+import { initializeDatabaseSchema, initializeAdminUser, initializeLmsCatalog, isPostgresConfigured, queryDatabase, supabasePool } from './server/supabase.js';
 
 const normalizePaystackReference = (value?: string | null) => String(value || '').trim();
 
