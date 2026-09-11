@@ -1,6 +1,6 @@
 # Native Vercel API Scaffold
 
-Every file in `api/` is a native Vercel function. Each currently exports a shared plain Node handler that validates the HTTP method and returns `501 Not Implemented`. Route logic is intentionally not migrated yet.
+`api/[...path].js` is the single native Vercel function for every `/api/*` request. This catch-all keeps the deployment within Vercel Hobby's 12-function limit while preserving the route surface below. It currently uses plain Node request/response APIs and returns `501 Not Implemented`; route logic is intentionally not migrated yet.
 
 ## Endpoint inventory
 
