@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     const id = Array.isArray(req.query?.id) ? req.query.id[0] : req.query?.id;
     const gateway = payload.gateway || 'paystack';
     const gatewayReference = payload.gatewayReference;
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
+    const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '').trim();
     let checkout;
 
     const application = await withTransaction(async (client) => {
