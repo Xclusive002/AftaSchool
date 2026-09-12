@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Laptop, Globe, Sparkles, Search, Filter, PlayCircle, BookOpen, 
   CheckCircle2, Clock, Calendar, Video, FileText, Award, DollarSign, 
-  ArrowRight, ShieldCheck, Tag, X, User, Mail, Phone, MapPin, Check
+  ArrowRight, ShieldCheck, Tag, X, User, Mail, Phone, MapPin, Check, MessageCircle
 } from 'lucide-react';
 import { INITIAL_ONLINE_COURSES, DetailedOnlineCourse } from '../../data/onlineCoursesSeed';
 import { formatCurrency, calculateStudentPricing, COUNTRY_OPTIONS, SupportedCurrency } from '../../services/currency';
@@ -17,6 +17,7 @@ interface OnlineCoursesPublicPageProps {
 
 export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = ({ onNavigate, onEnrollCourse }) => {
   const { settings } = useSettings();
+  const whatsappNumber = (settings?.whatsapp?.primaryNumber || '08030947468').replace(/\D/g, '').replace(/^0/, '234');
 
   // Filters & State
   const [studentLocation, setStudentLocation] = useState<'Nigeria' | 'Outside Nigeria'>('Nigeria');
@@ -611,6 +612,16 @@ export const OnlineCoursesPublicPage: React.FC<OnlineCoursesPublicPageProps> = (
                 </div>
 
                 <div className="space-y-2">
+                  <a
+                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello AITI Online Learning, I have completed payment for ${enrollmentSuccessData.courseTitle}. My enrollment ID is ${enrollmentSuccessData.enrollmentNumber}.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Confirm on WhatsApp
+                  </a>
+
                   <button
                     onClick={() => {
                       setEnrollModalCourse(null);

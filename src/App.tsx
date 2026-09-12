@@ -37,8 +37,9 @@ export const App: React.FC = () => {
   const [selectedProgramId, setSelectedProgramId] = useState<string | undefined>(undefined);
   const [bootReady, setBootReady] = useState(false);
 
-  const portalViews = ['portal_admin', 'portal_online_lms', 'portal_admissions', 'portal_finance', 'portal_instructor', 'portal_student', 'portal_parent'];
+  const portalViews = ['portal_admin'];
   const requiresAuth = portalViews.includes(currentView);
+  const hasAdminAccess = currentUser?.role === 'super_admin' || currentUser?.role === 'admin';
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBootReady(true), 800);
@@ -106,7 +107,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (requiresAuth && !currentUser) {
+  if (requiresAuth && (!currentUser || (currentView === 'portal_admin' && !hasAdminAccess))) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100">
         <Navbar currentView={currentView} onNavigate={handleNavigate} />

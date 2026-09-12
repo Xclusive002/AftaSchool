@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   MapPin, Phone, Mail, MessageCircle, Clock, ShieldCheck, 
-  ExternalLink, GraduationCap, ChevronRight, Award, Laptop 
+  ExternalLink, GraduationCap, ChevronRight, Award
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -112,21 +112,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button onClick={() => onNavigate('verify')} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" /> Certificate & ID Verification
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('portal_student')} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
-                  <Laptop className="w-3 h-3 text-cyan-500" /> Student Campus Portal
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('portal_admin')} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
-                  <ChevronRight className="w-3 h-3 text-cyan-500" /> Admin Command Center
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('portal_finance')} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
-                  <ChevronRight className="w-3 h-3 text-cyan-500" /> Bursary / Tuition Payments
                 </button>
               </li>
               <li>

@@ -4,7 +4,7 @@ import {
   ArrowRight, Search, Filter, Sparkles, BookOpen, Download, 
   Layers, MapPin, Tag, ChevronRight, X, AlertCircle, Check,
   ShieldCheck, Phone, Mail, Building, Briefcase, GraduationCap, Video,
-  Globe, CreditCard, ChevronDown, CheckCheck, HelpCircle, Code2,
+  Globe, CreditCard, ChevronDown, CheckCheck, HelpCircle, Code2, MessageCircle,
   Cpu, Palette, Terminal, Smartphone, Lock, Bot
 } from 'lucide-react';
 import { ShortCourse, ShortCourseCategory } from '../../types';
@@ -23,6 +23,7 @@ export const ShortCoursesPage: React.FC<ShortCoursesPageProps> = ({
   onSelectCourseForEnrollment 
 }) => {
   const { settings } = useSettings();
+  const whatsappNumber = (settings?.whatsapp?.primaryNumber || '08030947468').replace(/\D/g, '').replace(/^0/, '234');
   const [courses, setCourses] = useState<ShortCourse[]>([]);
   const [categories, setCategories] = useState<ShortCourseCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -1683,6 +1684,16 @@ export const ShortCoursesPage: React.FC<ShortCoursesPageProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <a
+                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello AITI Admissions, I have completed payment for ${registrationSuccess.courseTitle}. My registration ID is ${registrationSuccess.registrationId}.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Confirm on WhatsApp</span>
+                  </a>
+
                   <button
                     onClick={() => {
                       setDocumentModal({

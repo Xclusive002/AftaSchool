@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Search, CheckCircle2, XCircle, Award, 
   FileText, UserCheck, DollarSign, Sparkles, RefreshCw, 
-  ExternalLink, Building2 
+  ExternalLink, Building2, MessageCircle
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 
 export const VerificationPage: React.FC = () => {
   const { settings } = useSettings();
+  const whatsappNumber = (settings?.whatsapp?.primaryNumber || '08030947468').replace(/\D/g, '').replace(/^0/, '234');
   const [docType, setDocType] = useState<string>('all');
   const [searchCode, setSearchCode] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -335,6 +336,17 @@ export const VerificationPage: React.FC = () => {
                     className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-500"
                   >
                     Join the AITI WhatsApp Group <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
+
+                {verificationResult.type === 'receipt' && (
+                  <a
+                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello AITI Admissions, my payment has been verified. My receipt reference is ${verificationResult.data?.receiptNumber || searchCode}.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-500"
+                  >
+                    <MessageCircle className="h-4 w-4" /> Confirm Payment on WhatsApp
                   </a>
                 )}
               </div>

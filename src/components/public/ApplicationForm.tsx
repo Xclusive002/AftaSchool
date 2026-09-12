@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Check, ArrowRight, ArrowLeft, Upload, FileText, 
   CreditCard, CheckCircle2, AlertCircle, Sparkles, 
-  GraduationCap, User, Phone, MapPin, ShieldCheck, 
+  GraduationCap, User, Phone, MapPin, ShieldCheck, MessageCircle,
   Download, Printer, RefreshCw 
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -18,6 +18,7 @@ interface ApplicationFormProps {
 
 export const ApplicationForm: React.FC<ApplicationFormProps> = ({ initialProgramId, onNavigate }) => {
   const { settings } = useSettings();
+  const whatsappNumber = (settings?.whatsapp?.primaryNumber || '08030947468').replace(/\D/g, '').replace(/^0/, '234');
   const [programs, setPrograms] = useState<Program[]>([]);
   const [step, setStep] = useState<number>(1);
   const [submitting, setSubmitting] = useState(false);
@@ -876,6 +877,16 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ initialProgram
                   <span>View / Print Official e-Receipt</span>
                 </button>
               )}
+
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello AITI Admissions, I have completed my application payment. My application reference is ${completedApp.applicationId}.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl text-xs flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Confirm on WhatsApp</span>
+              </a>
 
               <button
                 onClick={() => onNavigate('portal_admissions')}

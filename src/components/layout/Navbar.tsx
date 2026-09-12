@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Menu, X, ChevronDown, GraduationCap, ShieldCheck, UserCheck, 
-  Phone, Sparkles, BookOpen, Layers, Laptop, MessageCircle 
+  Menu, X, GraduationCap, Phone, Sparkles, MessageCircle 
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -13,9 +12,8 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
   const { settings } = useSettings();
-  const { currentUser, setRole, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isPortalsDropdownOpen, setIsPortalsDropdownOpen] = useState(false);
 
   const navLinks = [
     { label: 'Home', view: 'home' },
@@ -30,26 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
     { label: 'Contact', view: 'contact' },
   ];
 
-  const portals = [
-    { label: 'Admin Command Center', role: 'super_admin', view: 'portal_admin', desc: 'Full Institutional Control, Online & Finance' },
-    { label: 'Online LMS Classroom', role: 'student', view: 'portal_online_lms', desc: 'Active Video Lessons, Quizzes & Meets' },
-    { label: 'Admissions Desk', role: 'admissions_officer', view: 'portal_admissions', desc: 'Review Applications & Issue Letters' },
-    { label: 'Finance & Bursary', role: 'finance_officer', view: 'portal_finance', desc: 'Invoices, Fees & NGN/USD Revenue' },
-    { label: 'Instructor Portal', role: 'instructor', view: 'portal_instructor', desc: 'Classes, Attendance & Assignments' },
-    { label: 'Student Portal', role: 'student', view: 'portal_student', desc: 'My Courses, Results, ID Card & Fees' },
-    { label: 'Parent / Guardian Portal', role: 'parent', view: 'portal_parent', desc: 'Attendance & Performance Monitor' },
-  ];
-
-  const handlePortalSelect = (portal: typeof portals[0]) => {
-    setRole(portal.role as any);
-    onNavigate(portal.view);
-    setIsPortalsDropdownOpen(false);
-    setIsMobileMenuOpen(false);
-  };
-
   const handleOnlineTrainingClick = () => {
-    onNavigate(currentUser ? 'portal_online_lms' : 'online_courses');
-    setIsPortalsDropdownOpen(false);
+    onNavigate('online_courses');
     setIsMobileMenuOpen(false);
   };
 
@@ -144,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
           {/* Right Action CTAs */}
           <div className="hidden sm:flex items-center gap-3">
-            {currentUser ? (
+            {currentUser && (
               <>
                 <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200">
                   <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold">
@@ -165,57 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                   Sign out
                 </button>
               </>
-            ) : (
-              <button
-                onClick={() => onNavigate('login')}
-                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs tracking-wide transition-all"
-              >
-                Sign in
-              </button>
             )}
-
-            {/* Portals Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsPortalsDropdownOpen(!isPortalsDropdownOpen)}
-                className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Portals Login</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-
-              {isPortalsDropdownOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
-                  onMouseLeave={() => setIsPortalsDropdownOpen(false)}
-                >
-                  <div className="px-3 py-2 border-b border-slate-800 mb-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-                      AITI Digital Campus Portals
-                    </span>
-                    <span className="text-[11px] text-cyan-400">Select your account role:</span>
-                  </div>
-                  {portals.map((p) => (
-                    <button
-                      key={p.role}
-                      onClick={() => handlePortalSelect(p)}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 transition-colors flex flex-col gap-0.5 group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-200 group-hover:text-cyan-300">
-                          {p.label}
-                        </span>
-                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 group-hover:bg-cyan-950 group-hover:text-cyan-400">
-                          {p.role.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">{p.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Apply CTA Button */}
             <button
@@ -262,24 +192,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                 {link.label}
               </button>
             ))}
-          </div>
-
-          <div className="border-t border-slate-800 pt-3">
-            <span className="text-[11px] font-bold text-slate-400 block mb-2 uppercase tracking-wider">
-              Access Institutional Portals:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {portals.map((p) => (
-                <button
-                  key={p.role}
-                  onClick={() => handlePortalSelect(p)}
-                  className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-left hover:border-cyan-500/50"
-                >
-                  <span className="text-xs font-bold text-cyan-300 block">{p.label}</span>
-                  <span className="text-[10px] text-slate-400">{p.desc}</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="pt-2">
