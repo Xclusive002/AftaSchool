@@ -40,7 +40,9 @@ export default async function handler(req, res) {
     const id = Array.isArray(req.query?.id) ? req.query.id[0] : req.query?.id;
     const gateway = payload.gateway || 'paystack';
     const gatewayReference = payload.gatewayReference;
-    const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '').trim();
+    const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '')
+      .trim()
+      .replace(/^(["'])|(["'])$/g, '');
     let checkout;
 
     const application = await withTransaction(async (client) => {
@@ -109,6 +111,7 @@ export default async function handler(req, res) {
             await writeAudit(client, row.data, 'APPLICATION_FEE_INITIATED', receiptNumber, `Paystack checkout initialized for ${row.data.applicationId}`);
             return updatedApplication;
           }
+          throw new Error(paystackJson?.message || `Paystack returned HTTP ${paystackResponse.status}.`);
         } catch (error) {
           throw new Error(`Paystack checkout initialization failed: ${error?.message || error}`);
         }

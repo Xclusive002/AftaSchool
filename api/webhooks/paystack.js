@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     return json(res, 405, { success: false, error: 'Method not allowed.' });
   }
 
-  const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '').trim();
+  const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '')
+    .trim()
+    .replace(/^(["'])|(["'])$/g, '');
   if (!secretKey) return json(res, 400, { success: false, message: 'Paystack secret key is not configured.' });
 
   try {

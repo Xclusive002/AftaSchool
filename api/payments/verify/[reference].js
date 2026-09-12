@@ -13,7 +13,9 @@ export default async function handler(req, res) {
 
   const rawReference = Array.isArray(req.query?.reference) ? req.query.reference[0] : req.query?.reference;
   const reference = normalizeReference(rawReference);
-  const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '').trim();
+  const secretKey = (process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET || '')
+    .trim()
+    .replace(/^(["'])|(["'])$/g, '');
   if (!reference) return json(res, 400, { success: false, verified: false, message: 'Paystack reference is required.' });
   if (!secretKey) return json(res, 400, { success: false, verified: false, message: 'Paystack secret key is not configured.' });
 
