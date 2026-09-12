@@ -14,6 +14,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
   const { settings } = useSettings();
   const { currentUser, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const headerPhoneNumber = '09056119667';
+  const headerWhatsAppNumber = headerPhoneNumber.replace(/^0/, '234');
 
   const navLinks = [
     { label: 'Home', view: 'home' },
@@ -50,14 +52,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
 
           <div className="flex items-center gap-4 text-slate-300 text-[11px]">
             <a 
-              href={`tel:${settings?.contact?.primaryPhone || ''}`}
+              href={`tel:${headerPhoneNumber}`}
               className="hover:text-cyan-400 flex items-center gap-1 transition-colors"
             >
-              <Phone className="w-3 h-3 text-cyan-400" /> {settings?.contact?.primaryPhone || ''}
+              <Phone className="w-3 h-3 text-cyan-400" /> {headerPhoneNumber}
             </a>
             <span className="text-slate-600">|</span>
             <a 
-              href={settings?.whatsapp?.primaryNumber ? `https://wa.me/234${settings.whatsapp.primaryNumber.replace(/^0/, '')}` : '#'}
+              href={`https://wa.me/${headerWhatsAppNumber}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors"
